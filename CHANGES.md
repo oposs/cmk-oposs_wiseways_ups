@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+## 0.1.4 - 2025-09-08
+### Fixed
 - return one unified rule
 
 ## 0.1.3 - 2025-09-08
