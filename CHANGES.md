@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+## 0.1.2 - 2025-09-08
+### Fixed
 - fixed package nameing to contain oposs prefix
 
 ## 0.1.1 - 2025-09-08
