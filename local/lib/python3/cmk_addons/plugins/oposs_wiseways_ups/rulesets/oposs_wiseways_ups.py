@@ -15,7 +15,7 @@ from cmk.rulesets.v1.form_specs import (
 from cmk.rulesets.v1.rule_specs import (
     CheckParameters,
     Topic,
-    HostAndServiceCondition,
+    HostCondition,
 )
 
 
@@ -174,5 +174,5 @@ rule_spec_oposs_wiseways_ups = CheckParameters(
     topic=Topic.POWER,
     name="oposs_wiseways_ups",
     parameter_form=_form_spec_oposs_wiseways_ups,
-    condition=HostAndServiceCondition(),
+    condition=HostCondition(),
 )
