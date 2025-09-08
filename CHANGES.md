@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### New
+
+### Changed
+
+### Fixed
+
+## 0.2.0 - 2025-09-08
+### New
 - Added support for ALL OIDs from monitored_oids.md:
   - upsSecondsOnBattery (.1.3.6.1.2.1.33.1.2.2.0)
   - upsBatteryCurrent (.1.3.6.1.2.1.33.1.2.6.0)
