@@ -22,20 +22,56 @@ from cmk.agent_based.v2 import (
 
 # Scaling/conversion functions
 def decivolts_to_volts(value: str) -> float:
-    """Convert decivolts to volts"""
-    return float(value) / 10 if value else 0.0
+    """Convert decivolts to volts, handling special values"""
+    if not value:
+        return 0.0
+    try:
+        val = float(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998:
+            return 0.0  # Signal unknown state
+        return val / 10
+    except (ValueError, TypeError):
+        return 0.0
 
 def centihertz_to_hertz(value: str) -> float:
-    """Convert centihertz to hertz"""
-    return float(value) / 100 if value else 0.0
+    """Convert centihertz to hertz, handling special values"""
+    if not value:
+        return 0.0
+    try:
+        val = float(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998:
+            return 0.0  # Signal unknown state
+        return val / 100
+    except (ValueError, TypeError):
+        return 0.0
 
 def deciamps_to_amps(value: str) -> float:
-    """Convert deciamps to amps"""
-    return float(value) / 10 if value else 0.0
+    """Convert deciamps to amps, handling special values"""
+    if not value:
+        return 0.0
+    try:
+        val = float(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998:
+            return 0.0  # Signal unknown state
+        return val / 10
+    except (ValueError, TypeError):
+        return 0.0
 
 def minutes_to_seconds(value: str) -> float:
-    """Convert minutes to seconds"""
-    return float(value) * 60 if value else 0.0
+    """Convert minutes to seconds, handling special SNMP values"""
+    if not value:
+        return -1.0
+    try:
+        val = float(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998 or val < 0:
+            return -1.0  # Signal unknown state
+        return val * 60
+    except (ValueError, TypeError):
+        return -1.0
 
 def parse_enterprise_voltage(value: str) -> float:
     """Parse voltage value handling enterprise OID format"""
@@ -46,6 +82,10 @@ def parse_enterprise_voltage(value: str) -> float:
         # Handle values like "2329→2298" by taking first value
         voltage_str = value.split("→")[0].strip()
         voltage_float = float(voltage_str)
+        
+        # Handle special SNMP values (-99998 = unknown)
+        if voltage_float == -99998:
+            return 0.0
         
         # Convert from centivolt-like format if needed
         if voltage_float > 1000:
@@ -59,12 +99,30 @@ def identity_str(value: str) -> str:
     return value or "Unknown"
 
 def identity_float(value: str) -> float:
-    """Convert to float directly"""
-    return float(value) if value else 0.0
+    """Convert to float directly, handling special values"""
+    if not value:
+        return -1.0
+    try:
+        val = float(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998:
+            return -1.0  # Signal unknown state
+        return val
+    except (ValueError, TypeError):
+        return -1.0
 
 def identity_int(value: str) -> int:
-    """Convert to int directly"""
-    return int(value) if value else 0
+    """Convert to int directly, handling special values"""
+    if not value:
+        return -1
+    try:
+        val = int(value)
+        # Handle special SNMP values (-99998 = unknown)
+        if val == -99998:
+            return -1  # Signal unknown state
+        return val
+    except (ValueError, TypeError):
+        return -1
 
 
 # Value mappers
@@ -107,19 +165,35 @@ OID_DEFINITIONS: List[OIDDefinition] = [
                   "firmware_version", converter=identity_str),
     OIDDefinition("agent_version", "2.1.33.1.1.4.0", "upsIdentAgentSoftwareVersion",
                   "agent_version", converter=identity_str),
+    OIDDefinition("input_num_lines", "2.1.33.1.3.2.0", "upsInputNumLines",
+                  "input_num_lines", converter=identity_int),
+    OIDDefinition("output_num_lines", "2.1.33.1.4.3.0", "upsOutputNumLines",
+                  "output_num_lines", converter=identity_int),
     
     # Battery metrics
     OIDDefinition("battery_status", "2.1.33.1.2.1.0", "upsBatteryStatus",
                   "battery_status", mapper=BATTERY_STATUS_MAP),
-    OIDDefinition("battery_charge", "4.1.935.1.1.1.2.2.1.0", "upsSmartBatteryCapacity (precise)",
+    OIDDefinition("seconds_on_battery", "2.1.33.1.2.2.0", "upsSecondsOnBattery",
+                  "seconds_on_battery", converter=identity_int),
+    OIDDefinition("battery_charge_enterprise", "4.1.44782.1.4.4.1.18.0", "ups1remainingCapacityOfBattery",
                   "battery_charge_percent", converter=identity_float),
+    OIDDefinition("battery_charge_standard", "4.1.935.1.1.1.2.2.1.0", "upsSmartBatteryCapacity (fallback)",
+                  "battery_charge_percent", converter=identity_float,
+                  fallback_for="battery_charge_enterprise"),
     OIDDefinition("battery_runtime_enterprise", "4.1.44782.1.4.4.1.17.0", "ups1batteryTimeRemaining (minutes)",
                   "battery_runtime_seconds", converter=minutes_to_seconds),
     OIDDefinition("battery_runtime_standard", "2.1.33.1.2.3.0", "upsEstimatedMinutesRemaining (fallback)",
                   "battery_runtime_seconds", converter=minutes_to_seconds, 
                   fallback_for="battery_runtime_enterprise"),
-    OIDDefinition("battery_voltage", "2.1.33.1.2.5.0", "upsBatteryVoltage (decivolts)",
-                  "battery_voltage", converter=decivolts_to_volts),
+    OIDDefinition("battery_runtime_smart", "4.1.935.1.1.1.2.2.4.0", "upsSmartBatteryRunTimeRemaining (seconds)",
+                  "battery_runtime_smart", converter=identity_int),
+    OIDDefinition("battery_voltage_enterprise", "4.1.44782.1.4.4.1.19.0", "ups1batteryVoltage (enterprise)",
+                  "battery_voltage", converter=parse_enterprise_voltage),
+    OIDDefinition("battery_voltage_standard", "2.1.33.1.2.5.0", "upsBatteryVoltage (decivolts)",
+                  "battery_voltage", converter=decivolts_to_volts,
+                  fallback_for="battery_voltage_enterprise"),
+    OIDDefinition("battery_current", "2.1.33.1.2.6.0", "upsBatteryCurrent (deciamps)",
+                  "battery_current", converter=deciamps_to_amps),
     OIDDefinition("battery_temp_enterprise", "4.1.44782.1.4.4.1.21.0", "ups1batteryTemperature (precise)",
                   "battery_temperature", converter=identity_float),
     OIDDefinition("battery_temp_standard", "2.1.33.1.2.7.0", "upsBatteryTemperature (fallback)",
@@ -138,6 +212,10 @@ OID_DEFINITIONS: List[OIDDefinition] = [
                   "input_frequency", converter=centihertz_to_hertz),
     
     # Output metrics
+    OIDDefinition("power_supply_mode", "4.1.44782.1.4.4.1.39.0", "ups1powerSupplyMode",
+                  "power_supply_mode", converter=identity_int),
+    OIDDefinition("base_output_status", "4.1.935.1.1.1.4.1.1.0", "upsBaseOutputStatus",
+                  "base_output_status", converter=identity_int),
     OIDDefinition("output_source", "2.1.33.1.4.1.0", "upsOutputSource",
                   "output_source", mapper=OUTPUT_SOURCE_MAP),
     OIDDefinition("output_voltage_enterprise", "4.1.44782.1.4.4.1.42.0", "ups1outputUPhaseVoltage (precise)",
@@ -284,6 +362,15 @@ def check_oposs_wiseways_ups_info(section: Dict[str, Any]) -> CheckResult:
         state=State.OK,
         summary=f"Model: {section['model']}, Firmware: {section['firmware_version']}, Agent: {section['agent_version']}"
     )
+    
+    # Add input/output line information if available
+    input_lines = section.get('input_num_lines', -1)
+    output_lines = section.get('output_num_lines', -1)
+    
+    if input_lines > 0:
+        yield Result(state=State.OK, notice=f"Input lines: {input_lines}")
+    if output_lines > 0:
+        yield Result(state=State.OK, notice=f"Output lines: {output_lines}")
 
 
 check_plugin_oposs_wiseways_ups_info = CheckPlugin(
@@ -319,29 +406,59 @@ def check_oposs_wiseways_ups_battery(
     yield Result(state=state, summary=f"Status: {status}")
     
     # Battery charge
-    yield from check_levels(
-        section.get("battery_charge_percent", 0),
-        levels_lower=params.get("battery_charge_lower"),
-        metric_name="battery_charge",
-        label="Charge",
-        render_func=render.percent,
-        boundaries=(0, 100),
-    )
+    charge_percent = section.get("battery_charge_percent", 0)
+    if charge_percent < 0:
+        # Handle unknown charge
+        yield Result(state=State.UNKNOWN, summary="Charge: unknown")
+        yield Metric("battery_charge", float('nan'))
+    else:
+        yield from check_levels(
+            charge_percent,
+            levels_lower=params.get("battery_charge_lower"),
+            metric_name="battery_charge",
+            label="Charge",
+            render_func=render.percent,
+            boundaries=(0, 100),
+        )
     
     # Runtime (in seconds)
-    yield from check_levels(
-        section.get("battery_runtime_seconds", 0),
-        levels_lower=params.get("battery_runtime_lower"),
-        metric_name="battery_runtime",
-        label="Runtime",
-        render_func=render.timespan,
-    )
+    runtime = section.get("battery_runtime_seconds", 0)
+    if runtime < 0:
+        # Handle negative runtime (usually means unknown/invalid)
+        yield Result(state=State.UNKNOWN, summary="Runtime: unknown")
+        yield Metric("battery_runtime", float('nan'))
+    else:
+        yield from check_levels(
+            runtime,
+            levels_lower=params.get("battery_runtime_lower"),
+            metric_name="battery_runtime",
+            label="Runtime",
+            render_func=render.timespan,
+        )
+    
+    # Smart battery runtime (alternative metric, already in seconds)
+    smart_runtime = section.get("battery_runtime_smart", -1)
+    if smart_runtime > 0:
+        yield Metric("battery_runtime_smart", smart_runtime)
+        yield Result(state=State.OK, notice=f"Smart runtime: {render.timespan(smart_runtime)}")
     
     # Battery voltage
     voltage = section.get("battery_voltage", 0)
     if voltage > 0:
         yield Metric("battery_voltage", voltage)
         yield Result(state=State.OK, notice=f"Battery voltage: {voltage:.1f}V")
+    
+    # Battery current
+    current = section.get("battery_current", 0)
+    if current != 0 and current != -1:  # 0 or -1 means unknown
+        yield Metric("battery_current", abs(current))
+        yield Result(state=State.OK, notice=f"Battery current: {abs(current):.1f}A")
+    
+    # Time on battery
+    time_on_battery = section.get("seconds_on_battery", 0)
+    if time_on_battery > 0:
+        yield Metric("time_on_battery", time_on_battery)
+        yield Result(state=State.OK, notice=f"Time on battery: {render.timespan(time_on_battery)}")
     
     # Temperature
     yield from check_levels(
@@ -392,6 +509,32 @@ def check_oposs_wiseways_ups_power(
     else:
         state = State.CRIT
     yield Result(state=state, summary=f"Power source: {source}")
+    
+    # Power supply mode (enterprise-specific)
+    power_mode = section.get("power_supply_mode", -1)
+    if power_mode > 0:
+        mode_map = {1: "standby", 2: "online", 3: "battery", 4: "bypass", 5: "eco"}
+        mode_name = mode_map.get(power_mode, f"mode {power_mode}")
+        yield Result(state=State.OK, notice=f"Power mode: {mode_name}")
+    
+    # Base output status (enterprise-specific)
+    base_status = section.get("base_output_status", -1)
+    if base_status > 0:
+        status_map = {
+            1: "unknown", 2: "onLine", 3: "onBattery", 4: "onSmartBoost",
+            5: "timedSleeping", 6: "softwareBypass", 7: "off", 8: "rebooting",
+            9: "switchedBypass", 10: "hardwareFailureBypass", 11: "sleepingUntilPowerReturn",
+            12: "onSmartTrim", 13: "ecoMode", 14: "hotStandby", 15: "onBatteryTest"
+        }
+        status_name = status_map.get(base_status, f"status {base_status}")
+        # Determine state based on status
+        if base_status == 2:  # onLine
+            state = State.OK
+        elif base_status in [3, 4, 6, 9, 12, 13, 15]:  # Various operational but not normal states
+            state = State.WARN
+        else:
+            state = State.CRIT
+        yield Result(state=state, notice=f"Base output status: {status_name}")
     
     # Input voltage
     yield from check_levels(
