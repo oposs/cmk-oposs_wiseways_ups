@@ -20,9 +20,9 @@ from cmk.rulesets.v1.rule_specs import (
 
 
 # Battery monitoring ruleset
-def _form_spec_wiseways_ups_battery():
+def _form_spec_oposs_wiseways_ups_battery():
     return Dictionary(
-        title=Title("Wiseways UPS Battery Monitoring"),
+        title=Title("OPOSS Wiseways UPS Battery Monitoring"),
         help_text=Help("Configure thresholds for UPS battery monitoring"),
         elements={
             "battery_charge_lower": DictElement(
@@ -75,19 +75,19 @@ def _form_spec_wiseways_ups_battery():
     )
 
 
-rule_spec_wiseways_ups_battery = CheckParameters(
-    title=Title("Wiseways UPS Battery"),
+rule_spec_oposs_wiseways_ups_battery = CheckParameters(
+    title=Title("OPOSS Wiseways UPS Battery"),
     topic=Topic.POWER,
-    name="wiseways_ups_battery",
-    parameter_form=_form_spec_wiseways_ups_battery,
+    name="oposs_wiseways_ups_battery",
+    parameter_form=_form_spec_oposs_wiseways_ups_battery,
     condition=HostAndServiceCondition(),
 )
 
 
 # Power (voltages) monitoring ruleset
-def _form_spec_wiseways_ups_power():
+def _form_spec_oposs_wiseways_ups_power():
     return Dictionary(
-        title=Title("Wiseways UPS Power Monitoring"),
+        title=Title("OPOSS Wiseways UPS Power Monitoring"),
         help_text=Help("Configure voltage thresholds for UPS power monitoring"),
         elements={
             "input_voltage_upper": DictElement(
@@ -142,19 +142,19 @@ def _form_spec_wiseways_ups_power():
     )
 
 
-rule_spec_wiseways_ups_power = CheckParameters(
-    title=Title("Wiseways UPS Power"),
+rule_spec_oposs_wiseways_ups_power = CheckParameters(
+    title=Title("OPOSS Wiseways UPS Power"),
     topic=Topic.POWER,
-    name="wiseways_ups_power",
-    parameter_form=_form_spec_wiseways_ups_power,
+    name="oposs_wiseways_ups_power",
+    parameter_form=_form_spec_oposs_wiseways_ups_power,
     condition=HostAndServiceCondition(),
 )
 
 
 # Load monitoring ruleset
-def _form_spec_wiseways_ups_load():
+def _form_spec_oposs_wiseways_ups_load():
     return Dictionary(
-        title=Title("Wiseways UPS Load Monitoring"),
+        title=Title("OPOSS Wiseways UPS Load Monitoring"),
         help_text=Help("Configure thresholds for UPS load monitoring"),
         elements={
             "load_upper": DictElement(
@@ -174,19 +174,19 @@ def _form_spec_wiseways_ups_load():
     )
 
 
-rule_spec_wiseways_ups_load = CheckParameters(
-    title=Title("Wiseways UPS Load"),
+rule_spec_oposs_wiseways_ups_load = CheckParameters(
+    title=Title("OPOSS Wiseways UPS Load"),
     topic=Topic.POWER,
-    name="wiseways_ups_load",
-    parameter_form=_form_spec_wiseways_ups_load,
+    name="oposs_wiseways_ups_load",
+    parameter_form=_form_spec_oposs_wiseways_ups_load,
     condition=HostAndServiceCondition(),
 )
 
 
 # Frequency monitoring ruleset
-def _form_spec_wiseways_ups_frequency():
+def _form_spec_oposs_wiseways_ups_frequency():
     return Dictionary(
-        title=Title("Wiseways UPS Frequency Monitoring"),
+        title=Title("OPOSS Wiseways UPS Frequency Monitoring"),
         help_text=Help("Configure frequency thresholds for UPS monitoring"),
         elements={
             "frequency_upper": DictElement(
@@ -219,10 +219,10 @@ def _form_spec_wiseways_ups_frequency():
     )
 
 
-rule_spec_wiseways_ups_frequency = CheckParameters(
-    title=Title("Wiseways UPS Frequency"),
+rule_spec_oposs_wiseways_ups_frequency = CheckParameters(
+    title=Title("OPOSS Wiseways UPS Frequency"),
     topic=Topic.POWER,
-    name="wiseways_ups_frequency",
-    parameter_form=_form_spec_wiseways_ups_frequency,
+    name="oposs_wiseways_ups_frequency",
+    parameter_form=_form_spec_oposs_wiseways_ups_frequency,
     condition=HostAndServiceCondition(),
 )

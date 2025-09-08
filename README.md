@@ -28,7 +28,7 @@ This plugin provides complete monitoring of Wiseways UPS systems via SNMP, inclu
 
 2. Install the MKP in CheckMK:
    ```bash
-   mkp install oposs_wiseways_ups-<version>.mkp
+   cmk -P install oposs_wiseways_ups-<version>.mkp
    ```
 
 3. Run service discovery on your UPS hosts:

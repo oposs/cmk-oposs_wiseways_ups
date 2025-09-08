@@ -168,7 +168,7 @@ OID_DEFINITIONS: List[OIDDefinition] = [
 ]
 
 
-def parse_wiseways_ups(string_table):
+def parse_oposs_wiseways_ups(string_table):
     """Parse SNMP data and normalize values using OID definitions"""
     if not string_table or not string_table[0]:
         return {}
@@ -255,9 +255,9 @@ def parse_wiseways_ups(string_table):
     return parsed
 
 
-snmp_section_wiseways_ups = SimpleSNMPSection(
-    name="wiseways_ups",
-    parse_function=parse_wiseways_ups,
+snmp_section_oposs_wiseways_ups = SimpleSNMPSection(
+    name="oposs_wiseways_ups",
+    parse_function=parse_oposs_wiseways_ups,
     fetch=SNMPTree(
         base=".1.3.6.1",
         # OIDs are fetched in the exact order defined
@@ -270,12 +270,12 @@ snmp_section_wiseways_ups = SimpleSNMPSection(
 
 
 # Check plugin for UPS Info (static information)
-def discover_wiseways_ups_info(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_info(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_wiseways_ups_info(section: Dict[str, Any]) -> CheckResult:
+def check_oposs_wiseways_ups_info(section: Dict[str, Any]) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
         return
@@ -286,22 +286,22 @@ def check_wiseways_ups_info(section: Dict[str, Any]) -> CheckResult:
     )
 
 
-check_plugin_wiseways_ups_info = CheckPlugin(
-    name="wiseways_ups_info",
+check_plugin_oposs_wiseways_ups_info = CheckPlugin(
+    name="oposs_wiseways_ups_info",
     service_name="UPS Info",
-    sections=["wiseways_ups"],
-    discovery_function=discover_wiseways_ups_info,
-    check_function=check_wiseways_ups_info,
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_info,
+    check_function=check_oposs_wiseways_ups_info,
 )
 
 
 # Check plugin for UPS Battery
-def discover_wiseways_ups_battery(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_wiseways_ups_battery(
+def check_oposs_wiseways_ups_battery(
     params: Mapping[str, Any], section: Dict[str, Any]
 ) -> CheckResult:
     if not section:
@@ -354,13 +354,13 @@ def check_wiseways_ups_battery(
     )
 
 
-check_plugin_wiseways_ups_battery = CheckPlugin(
-    name="wiseways_ups_battery",
+check_plugin_oposs_wiseways_ups_battery = CheckPlugin(
+    name="oposs_wiseways_ups_battery",
     service_name="UPS Battery",
-    sections=["wiseways_ups"],
-    discovery_function=discover_wiseways_ups_battery,
-    check_function=check_wiseways_ups_battery,
-    check_ruleset_name="wiseways_ups_battery",
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_battery,
+    check_function=check_oposs_wiseways_ups_battery,
+    check_ruleset_name="oposs_wiseways_ups_battery",
     check_default_parameters={
         "battery_charge_lower": ("fixed", (20.0, 10.0)),
         "battery_runtime_lower": ("fixed", (600.0, 300.0)),  # 10min, 5min in seconds
@@ -371,12 +371,12 @@ check_plugin_wiseways_ups_battery = CheckPlugin(
 
 
 # Check plugin for UPS Power (voltages)
-def discover_wiseways_ups_power(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_power(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_wiseways_ups_power(
+def check_oposs_wiseways_ups_power(
     params: Mapping[str, Any], section: Dict[str, Any]
 ) -> CheckResult:
     if not section:
@@ -426,13 +426,13 @@ def check_wiseways_ups_power(
     yield Metric("input_line_bads", line_bads)
 
 
-check_plugin_wiseways_ups_power = CheckPlugin(
-    name="wiseways_ups_power",
+check_plugin_oposs_wiseways_ups_power = CheckPlugin(
+    name="oposs_wiseways_ups_power",
     service_name="UPS Power",
-    sections=["wiseways_ups"],
-    discovery_function=discover_wiseways_ups_power,
-    check_function=check_wiseways_ups_power,
-    check_ruleset_name="wiseways_ups_power",
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_power,
+    check_function=check_oposs_wiseways_ups_power,
+    check_ruleset_name="oposs_wiseways_ups_power",
     check_default_parameters={
         "input_voltage_upper": ("fixed", (250.0, 260.0)),
         "input_voltage_lower": ("fixed", (210.0, 200.0)),
@@ -443,12 +443,12 @@ check_plugin_wiseways_ups_power = CheckPlugin(
 
 
 # Check plugin for UPS Load
-def discover_wiseways_ups_load(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_load(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_wiseways_ups_load(
+def check_oposs_wiseways_ups_load(
     params: Mapping[str, Any], section: Dict[str, Any]
 ) -> CheckResult:
     if not section:
@@ -478,13 +478,13 @@ def check_wiseways_ups_load(
         yield Result(state=State.OK, notice=f"Output current: {current:.1f}A")
 
 
-check_plugin_wiseways_ups_load = CheckPlugin(
-    name="wiseways_ups_load",
+check_plugin_oposs_wiseways_ups_load = CheckPlugin(
+    name="oposs_wiseways_ups_load",
     service_name="UPS Load",
-    sections=["wiseways_ups"],
-    discovery_function=discover_wiseways_ups_load,
-    check_function=check_wiseways_ups_load,
-    check_ruleset_name="wiseways_ups_load",
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_load,
+    check_function=check_oposs_wiseways_ups_load,
+    check_ruleset_name="oposs_wiseways_ups_load",
     check_default_parameters={
         "load_upper": ("fixed", (80.0, 90.0)),
     },
@@ -492,12 +492,12 @@ check_plugin_wiseways_ups_load = CheckPlugin(
 
 
 # Check plugin for UPS Frequency
-def discover_wiseways_ups_frequency(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_frequency(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_wiseways_ups_frequency(
+def check_oposs_wiseways_ups_frequency(
     params: Mapping[str, Any], section: Dict[str, Any]
 ) -> CheckResult:
     if not section:
@@ -531,13 +531,13 @@ def check_wiseways_ups_frequency(
         yield Result(state=State.OK, notice=f"Bypass frequency: {bypass_freq:.1f} Hz")
 
 
-check_plugin_wiseways_ups_frequency = CheckPlugin(
-    name="wiseways_ups_frequency",
+check_plugin_oposs_wiseways_ups_frequency = CheckPlugin(
+    name="oposs_wiseways_ups_frequency",
     service_name="UPS Frequency",
-    sections=["wiseways_ups"],
-    discovery_function=discover_wiseways_ups_frequency,
-    check_function=check_wiseways_ups_frequency,
-    check_ruleset_name="wiseways_ups_frequency",
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_frequency,
+    check_function=check_oposs_wiseways_ups_frequency,
+    check_ruleset_name="oposs_wiseways_ups_frequency",
     check_default_parameters={
         "frequency_upper": ("fixed", (51.0, 52.0)),
         "frequency_lower": ("fixed", (49.0, 48.0)),
