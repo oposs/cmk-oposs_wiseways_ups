@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, Mapping
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from dataclasses import dataclass
 from cmk.agent_based.v2 import (
     CheckPlugin,
     CheckResult,
@@ -19,135 +20,237 @@ from cmk.agent_based.v2 import (
 )
 
 
+# Scaling/conversion functions
+def decivolts_to_volts(value: str) -> float:
+    """Convert decivolts to volts"""
+    return float(value) / 10 if value else 0.0
+
+def centihertz_to_hertz(value: str) -> float:
+    """Convert centihertz to hertz"""
+    return float(value) / 100 if value else 0.0
+
+def deciamps_to_amps(value: str) -> float:
+    """Convert deciamps to amps"""
+    return float(value) / 10 if value else 0.0
+
+def minutes_to_seconds(value: str) -> float:
+    """Convert minutes to seconds"""
+    return float(value) * 60 if value else 0.0
+
+def parse_enterprise_voltage(value: str) -> float:
+    """Parse voltage value handling enterprise OID format"""
+    if not value or value == "0":
+        return 0.0
+    
+    try:
+        # Handle values like "2329→2298" by taking first value
+        voltage_str = value.split("→")[0].strip()
+        voltage_float = float(voltage_str)
+        
+        # Convert from centivolt-like format if needed
+        if voltage_float > 1000:
+            return voltage_float / 10
+        return voltage_float
+    except (ValueError, IndexError):
+        return 0.0
+
+def identity_str(value: str) -> str:
+    """Return string as-is or default"""
+    return value or "Unknown"
+
+def identity_float(value: str) -> float:
+    """Convert to float directly"""
+    return float(value) if value else 0.0
+
+def identity_int(value: str) -> int:
+    """Convert to int directly"""
+    return int(value) if value else 0
+
+
+# Value mappers
+BATTERY_STATUS_MAP = {
+    "1": "unknown",
+    "2": "batteryNormal",
+    "3": "batteryLow",
+    "4": "batteryDepleted",
+}
+
+OUTPUT_SOURCE_MAP = {
+    "1": "other",
+    "2": "none",
+    "3": "normal",
+    "4": "bypass",
+    "5": "battery",
+    "6": "booster",
+    "7": "reducer",
+}
+
+
+@dataclass
+class OIDDefinition:
+    """Complete definition for an OID including all metadata"""
+    key: str                # Key name in parsed dict
+    oid: str                # OID suffix
+    description: str        # Human-readable description
+    output_key: str         # Key name in final parsed output
+    converter: Optional[Callable] = None  # Conversion function
+    mapper: Optional[Dict] = None         # Value mapping dict
+    fallback_for: Optional[str] = None    # Key this is a fallback for
+
+
+# OID definitions with all metadata - order matters!
+OID_DEFINITIONS: List[OIDDefinition] = [
+    # Identity information
+    OIDDefinition("model", "2.1.33.1.1.2.0", "upsIdentModel", 
+                  "model", converter=identity_str),
+    OIDDefinition("firmware_version", "2.1.33.1.1.3.0", "upsIdentUPSSoftwareVersion", 
+                  "firmware_version", converter=identity_str),
+    OIDDefinition("agent_version", "2.1.33.1.1.4.0", "upsIdentAgentSoftwareVersion",
+                  "agent_version", converter=identity_str),
+    
+    # Battery metrics
+    OIDDefinition("battery_status", "2.1.33.1.2.1.0", "upsBatteryStatus",
+                  "battery_status", mapper=BATTERY_STATUS_MAP),
+    OIDDefinition("battery_charge", "4.1.935.1.1.1.2.2.1.0", "upsSmartBatteryCapacity (precise)",
+                  "battery_charge_percent", converter=identity_float),
+    OIDDefinition("battery_runtime_enterprise", "4.1.44782.1.4.4.1.17.0", "ups1batteryTimeRemaining (minutes)",
+                  "battery_runtime_seconds", converter=minutes_to_seconds),
+    OIDDefinition("battery_runtime_standard", "2.1.33.1.2.3.0", "upsEstimatedMinutesRemaining (fallback)",
+                  "battery_runtime_seconds", converter=minutes_to_seconds, 
+                  fallback_for="battery_runtime_enterprise"),
+    OIDDefinition("battery_voltage", "2.1.33.1.2.5.0", "upsBatteryVoltage (decivolts)",
+                  "battery_voltage", converter=decivolts_to_volts),
+    OIDDefinition("battery_temp_enterprise", "4.1.44782.1.4.4.1.21.0", "ups1batteryTemperature (precise)",
+                  "battery_temperature", converter=identity_float),
+    OIDDefinition("battery_temp_standard", "2.1.33.1.2.7.0", "upsBatteryTemperature (fallback)",
+                  "battery_temperature", converter=identity_float,
+                  fallback_for="battery_temp_enterprise"),
+    
+    # Input metrics
+    OIDDefinition("input_line_bads", "2.1.33.1.3.1.0", "upsInputLineBads",
+                  "input_line_bads", converter=identity_int),
+    OIDDefinition("input_voltage_enterprise", "4.1.44782.1.4.4.1.27.0", "ups1inputUPhaseVoltage (precise)",
+                  "input_voltage", converter=parse_enterprise_voltage),
+    OIDDefinition("input_voltage_standard", "2.1.33.1.3.3.1.3.1", "upsInputVoltage (fallback)",
+                  "input_voltage", converter=decivolts_to_volts,
+                  fallback_for="input_voltage_enterprise"),
+    OIDDefinition("input_frequency", "2.1.33.1.3.3.1.2.1", "upsInputFrequency (centihertz)",
+                  "input_frequency", converter=centihertz_to_hertz),
+    
+    # Output metrics
+    OIDDefinition("output_source", "2.1.33.1.4.1.0", "upsOutputSource",
+                  "output_source", mapper=OUTPUT_SOURCE_MAP),
+    OIDDefinition("output_voltage_enterprise", "4.1.44782.1.4.4.1.42.0", "ups1outputUPhaseVoltage (precise)",
+                  "output_voltage", converter=parse_enterprise_voltage),
+    OIDDefinition("output_voltage_standard", "2.1.33.1.4.4.1.2.1", "upsOutputVoltage (fallback)",
+                  "output_voltage", converter=decivolts_to_volts,
+                  fallback_for="output_voltage_enterprise"),
+    OIDDefinition("output_frequency", "2.1.33.1.4.2.0", "upsOutputFrequency (centihertz)",
+                  "output_frequency", converter=centihertz_to_hertz),
+    OIDDefinition("output_current", "2.1.33.1.4.4.1.3.1", "upsOutputCurrent (deciamps)",
+                  "output_current", converter=deciamps_to_amps),
+    OIDDefinition("output_power", "2.1.33.1.4.4.1.4.1", "upsOutputPower (watts)",
+                  "output_power_watts", converter=identity_float),
+    OIDDefinition("output_load_enterprise", "4.1.44782.1.4.4.1.51.0", "ups1outputPhaseLoadRate (precise)",
+                  "output_load_percent", converter=identity_float),
+    OIDDefinition("output_load_standard", "2.1.33.1.4.4.1.5.1", "upsOutputPercentLoad (fallback)",
+                  "output_load_percent", converter=identity_float,
+                  fallback_for="output_load_enterprise"),
+    
+    # Bypass metrics
+    OIDDefinition("bypass_voltage_enterprise", "4.1.44782.1.4.4.1.59.0", "ups1bypassUPhaseVoltage (precise)",
+                  "bypass_voltage", converter=parse_enterprise_voltage),
+    OIDDefinition("bypass_voltage_standard", "2.1.33.1.5.3.1.3.1", "upsBypassVoltage (fallback)",
+                  "bypass_voltage", converter=decivolts_to_volts,
+                  fallback_for="bypass_voltage_enterprise"),
+    OIDDefinition("bypass_frequency", "2.1.33.1.5.1.0", "upsBypassFrequency (centihertz)",
+                  "bypass_frequency", converter=centihertz_to_hertz),
+]
+
+
 def parse_wiseways_ups(string_table):
-    """Parse SNMP data and normalize values"""
+    """Parse SNMP data and normalize values using OID definitions"""
     if not string_table or not string_table[0]:
         return {}
     
-    row = string_table[0]
+    # Build raw data mapping
+    raw_data = {}
+    for idx, value in enumerate(string_table[0]):
+        if idx < len(OID_DEFINITIONS):
+            raw_data[OID_DEFINITIONS[idx].key] = value
+    
+    # Process each OID definition
     parsed = {}
+    fallback_keys = {}  # Track which keys are fallbacks
     
-    # Identity information (static)
-    parsed["model"] = row[0] if row[0] else "Unknown"
-    parsed["software_version"] = row[1] if row[1] else "Unknown"
-    
-    # Battery status mapping
-    battery_status_map = {
-        "1": "unknown",
-        "2": "batteryNormal", 
-        "3": "batteryLow",
-        "4": "batteryDepleted",
-    }
-    parsed["battery_status"] = battery_status_map.get(row[2], "unknown")
-    
-    # Battery metrics - use most precise values
-    parsed["battery_charge_percent"] = float(row[3]) if row[3] else 0.0
-    
-    # Runtime: prefer enterprise OID (row[4]) over standard (row[5]) if available
-    # Convert minutes to seconds for base SI unit
-    if row[4] and row[4] != "0":
-        parsed["battery_runtime_seconds"] = float(row[4]) * 60
-    elif row[5] and row[5] != "0":
-        parsed["battery_runtime_seconds"] = float(row[5]) * 60
-    else:
-        parsed["battery_runtime_seconds"] = 0.0
-    
-    # Battery voltage - convert decivolts to volts
-    parsed["battery_voltage"] = float(row[6]) / 10 if row[6] else 0.0
-    
-    # Battery temperature - use enterprise OID for better precision
-    if row[7] and row[7] != "0":  # Enterprise OID with decimal
-        try:
-            parsed["battery_temperature"] = float(row[7])
-        except ValueError:
-            parsed["battery_temperature"] = 0.0
-    elif row[8] and row[8] != "0":  # Standard OID
-        parsed["battery_temperature"] = float(row[8])
-    else:
-        parsed["battery_temperature"] = 0.0
-    
-    # Input metrics
-    parsed["input_line_bads"] = int(row[9]) if row[9] else 0
-    
-    # Input voltage - prefer enterprise OID for precision
-    if row[10] and row[10] != "0":  # Enterprise OID (already in volts with decimal)
-        try:
-            # Handle values like "2329→2298" by taking first value
-            voltage_str = row[10].split("→")[0].strip()
-            # Convert from centivolt-like format if needed
-            if float(voltage_str) > 1000:
-                parsed["input_voltage"] = float(voltage_str) / 10
+    for oid_def in OID_DEFINITIONS:
+        value = raw_data.get(oid_def.key, "")
+        
+        # Skip if this is a fallback and we should check primary first
+        if oid_def.fallback_for:
+            fallback_keys[oid_def.output_key] = oid_def.fallback_for
+            continue
+        
+        # Process value
+        if not value or value == "0":
+            # Check if there's a fallback
+            if oid_def.output_key in fallback_keys:
+                fallback_def = next((d for d in OID_DEFINITIONS 
+                                   if d.key == fallback_keys[oid_def.output_key]), None)
+                if fallback_def:
+                    fallback_value = raw_data.get(fallback_def.key, "")
+                    if fallback_value and fallback_value != "0":
+                        value = fallback_value
+                        oid_def = fallback_def
+        
+        # Apply conversion or mapping
+        if value and value != "0":
+            if oid_def.mapper:
+                parsed[oid_def.output_key] = oid_def.mapper.get(value, "unknown")
+            elif oid_def.converter:
+                try:
+                    parsed[oid_def.output_key] = oid_def.converter(value)
+                except (ValueError, TypeError):
+                    # Set default based on converter type
+                    if oid_def.converter in [identity_float, decivolts_to_volts, 
+                                            centihertz_to_hertz, deciamps_to_amps,
+                                            minutes_to_seconds, parse_enterprise_voltage]:
+                        parsed[oid_def.output_key] = 0.0
+                    elif oid_def.converter == identity_int:
+                        parsed[oid_def.output_key] = 0
+                    else:
+                        parsed[oid_def.output_key] = ""
             else:
-                parsed["input_voltage"] = float(voltage_str)
-        except (ValueError, IndexError):
-            parsed["input_voltage"] = 0.0
-    elif row[11] and row[11] != "0":  # Standard OID in decivolts
-        parsed["input_voltage"] = float(row[11]) / 10
-    else:
-        parsed["input_voltage"] = 0.0
-    
-    # Input frequency - convert centihertz to hertz
-    parsed["input_frequency"] = float(row[12]) / 100 if row[12] else 0.0
-    
-    # Output source mapping
-    output_source_map = {
-        "1": "other",
-        "2": "none", 
-        "3": "normal",
-        "4": "bypass",
-        "5": "battery",
-        "6": "booster",
-        "7": "reducer",
-    }
-    parsed["output_source"] = output_source_map.get(row[13], "unknown")
-    
-    # Output voltage - prefer enterprise OID
-    if row[14] and row[14] != "0":  # Enterprise OID
-        try:
-            voltage_str = row[14].split("→")[0].strip()
-            if float(voltage_str) > 1000:
-                parsed["output_voltage"] = float(voltage_str) / 10
+                parsed[oid_def.output_key] = value
+        else:
+            # Set defaults for empty values
+            if oid_def.mapper:
+                parsed[oid_def.output_key] = "unknown"
+            elif oid_def.converter == identity_str:
+                parsed[oid_def.output_key] = "Unknown"
+            elif oid_def.converter in [identity_float, decivolts_to_volts, 
+                                      centihertz_to_hertz, deciamps_to_amps,
+                                      minutes_to_seconds, parse_enterprise_voltage]:
+                parsed[oid_def.output_key] = 0.0
+            elif oid_def.converter == identity_int:
+                parsed[oid_def.output_key] = 0
             else:
-                parsed["output_voltage"] = float(voltage_str)
-        except (ValueError, IndexError):
-            parsed["output_voltage"] = 0.0
-    elif row[15] and row[15] != "0":  # Standard OID
-        parsed["output_voltage"] = float(row[15]) / 10
-    else:
-        parsed["output_voltage"] = 0.0
+                parsed[oid_def.output_key] = ""
     
-    # Output frequency - convert centihertz to hertz
-    parsed["output_frequency"] = float(row[16]) / 100 if row[16] else 0.0
-    
-    # Output power metrics
-    parsed["output_current"] = float(row[17]) / 10 if row[17] else 0.0  # Deciamps to amps
-    parsed["output_power_watts"] = float(row[18]) if row[18] else 0.0
-    
-    # Output load - prefer enterprise OID for consistency
-    if row[19] and row[19] != "0":  # Enterprise OID
-        parsed["output_load_percent"] = float(row[19])
-    elif row[20] and row[20] != "0":  # Standard OID
-        parsed["output_load_percent"] = float(row[20])
-    else:
-        parsed["output_load_percent"] = 0.0
-    
-    # Bypass voltage - prefer enterprise OID
-    if row[21] and row[21] != "0":  # Enterprise OID
-        try:
-            voltage_str = row[21].split("→")[0].strip()
-            if float(voltage_str) > 1000:
-                parsed["bypass_voltage"] = float(voltage_str) / 10
-            else:
-                parsed["bypass_voltage"] = float(voltage_str)
-        except (ValueError, IndexError):
-            parsed["bypass_voltage"] = 0.0
-    elif row[22] and row[22] != "0":  # Standard OID
-        parsed["bypass_voltage"] = float(row[22]) / 10
-    else:
-        parsed["bypass_voltage"] = 0.0
-    
-    # Bypass frequency - convert centihertz to hertz
-    parsed["bypass_frequency"] = float(row[23]) / 100 if row[23] else 0.0
+    # Handle any remaining fallbacks that weren't processed
+    for output_key, primary_key in fallback_keys.items():
+        if output_key not in parsed or parsed[output_key] == 0.0:
+            # Find the fallback definition
+            fallback_def = next((d for d in OID_DEFINITIONS 
+                               if d.fallback_for == primary_key and d.output_key == output_key), None)
+            if fallback_def:
+                value = raw_data.get(fallback_def.key, "")
+                if value and value != "0":
+                    if fallback_def.converter:
+                        try:
+                            parsed[output_key] = fallback_def.converter(value)
+                        except (ValueError, TypeError):
+                            pass  # Keep existing value
     
     return parsed
 
@@ -157,35 +260,11 @@ snmp_section_wiseways_ups = SimpleSNMPSection(
     parse_function=parse_wiseways_ups,
     fetch=SNMPTree(
         base=".1.3.6.1",
-        oids=[
-            "2.1.33.1.1.2.0",   # upsIdentModel
-            "2.1.33.1.1.3.0",   # upsIdentUPSSoftwareVersion
-            "2.1.33.1.2.1.0",   # upsBatteryStatus
-            "4.1.935.1.1.1.2.2.1.0",  # upsSmartBatteryCapacity (prefer for precision)
-            "4.1.44782.1.4.4.1.17.0", # ups1batteryTimeRemaining (minutes, enterprise)
-            "2.1.33.1.2.3.0",   # upsEstimatedMinutesRemaining (fallback)
-            "2.1.33.1.2.5.0",   # upsBatteryVoltage (decivolts)
-            "4.1.44782.1.4.4.1.21.0", # ups1batteryTemperature (more precise)
-            "2.1.33.1.2.7.0",   # upsBatteryTemperature (fallback)
-            "2.1.33.1.3.1.0",   # upsInputLineBads
-            "4.1.44782.1.4.4.1.27.0", # ups1inputUPhaseVoltage (precise)
-            "2.1.33.1.3.3.1.3.1", # upsInputVoltage (fallback)
-            "2.1.33.1.3.3.1.2.1", # upsInputFrequency (centihertz)
-            "2.1.33.1.4.1.0",   # upsOutputSource
-            "4.1.44782.1.4.4.1.42.0", # ups1outputUPhaseVoltage (precise)
-            "2.1.33.1.4.4.1.2.1", # upsOutputVoltage (fallback)
-            "2.1.33.1.4.2.0",   # upsOutputFrequency (centihertz)
-            "2.1.33.1.4.4.1.3.1", # upsOutputCurrent (deciamps)
-            "2.1.33.1.4.4.1.4.1", # upsOutputPower (watts)
-            "4.1.44782.1.4.4.1.51.0", # ups1outputPhaseLoadRate (precise)
-            "2.1.33.1.4.4.1.5.1", # upsOutputPercentLoad (fallback)
-            "4.1.44782.1.4.4.1.59.0", # ups1bypassUPhaseVoltage (precise)
-            "2.1.33.1.5.3.1.3.1", # upsBypassVoltage (fallback)
-            "2.1.33.1.5.1.0",   # upsBypassFrequency (centihertz)
-        ],
+        # OIDs are fetched in the exact order defined
+        oids=[oid_def.oid for oid_def in OID_DEFINITIONS],
     ),
     detect=SNMPDetectSpecification(
-        exists(".1.3.6.1.2.1.33.1.1.1.0")  # upsIdentManufacturer
+        contains(".1.3.6.1.2.1.33.1.1.5.0", "Wiseway3")  # upsIdentName must contain "Wiseway3"
     ),
 )
 
@@ -203,7 +282,7 @@ def check_wiseways_ups_info(section: Dict[str, Any]) -> CheckResult:
     
     yield Result(
         state=State.OK,
-        summary=f"Model: {section['model']}, Software: {section['software_version']}"
+        summary=f"Model: {section['model']}, Firmware: {section['firmware_version']}, Agent: {section['agent_version']}"
     )
 
 
