@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+
+### Fixed
+
+## 0.1.1 - 2025-09-08
+### Changed
 - Refactored SNMP OID handling to use metadata-driven approach with OIDDefinition dataclass
 - Improved code maintainability by centralizing OID configuration, scaling functions, and value mappings
 
