@@ -360,7 +360,7 @@ check_plugin_oposs_wiseways_ups_battery = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_battery,
     check_function=check_oposs_wiseways_ups_battery,
-    check_ruleset_name="oposs_wiseways_ups_battery",
+    check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
         "battery_charge_lower": ("fixed", (20.0, 10.0)),
         "battery_runtime_lower": ("fixed", (600.0, 300.0)),  # 10min, 5min in seconds
@@ -432,7 +432,7 @@ check_plugin_oposs_wiseways_ups_power = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_power,
     check_function=check_oposs_wiseways_ups_power,
-    check_ruleset_name="oposs_wiseways_ups_power",
+    check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
         "input_voltage_upper": ("fixed", (250.0, 260.0)),
         "input_voltage_lower": ("fixed", (210.0, 200.0)),
@@ -484,7 +484,7 @@ check_plugin_oposs_wiseways_ups_load = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_load,
     check_function=check_oposs_wiseways_ups_load,
-    check_ruleset_name="oposs_wiseways_ups_load",
+    check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
         "load_upper": ("fixed", (80.0, 90.0)),
     },
@@ -537,7 +537,7 @@ check_plugin_oposs_wiseways_ups_frequency = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_frequency,
     check_function=check_oposs_wiseways_ups_frequency,
-    check_ruleset_name="oposs_wiseways_ups_frequency",
+    check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
         "frequency_upper": ("fixed", (51.0, 52.0)),
         "frequency_lower": ("fixed", (49.0, 48.0)),
