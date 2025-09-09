@@ -8,10 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### New
+- Added individual battery monitoring services:
+  - **UPS Battery Charge** - Dedicated service for battery charge percentage
+  - **UPS Battery Runtime** - Dedicated service for remaining runtime
+- Added comprehensive graphing definitions with unit-based grouping:
+  - Separated voltage graphs (AC voltages, battery voltage, all voltages)
+  - Individual graphs for percentages, time metrics, currents, and temperature
+  - Added missing metrics: battery_current, time_on_battery
+- Expanded physical measurement services to 13 individual monitors:
+  - Input/Output/Bypass/Battery voltages
+  - Input/Output/Bypass frequencies  
+  - Battery/Output currents
+  - Temperature, Output power, Output load
 
 ### Changed
+- Reorganized graphing to group metrics by unit type for better visualization
+- Updated ruleset configuration to support all 18 services with appropriate thresholds
+- Improved monitored_oids.md documentation with service-based organization
+- Made all ruleset parameters optional for flexible configuration
+- Enhanced battery voltage service to use device configuration as dynamic defaults
 
 ### Fixed
+- Fixed temperature metric name (changed from battery_temperature to temperature)
+- Corrected ruleset parameter names to match check plugin expectations
+- Added missing threshold parameters for bypass voltage, battery voltage, currents, and power
 
 ## 0.2.0 - 2025-09-08
 ### New

@@ -1,93 +1,224 @@
 # Wiseway UPS - Monitored OIDs
 
 ## Overview
-This document lists the SNMP OIDs that need to be monitored for the Wiseway UPS device (Model: 6000VA). These OIDs are highlighted in yellow in the source documentation and will be implemented in the CheckMK SNMP plugin.
+This document lists the SNMP OIDs monitored by the CheckMK plugin for Wiseway UPS devices. The plugin supports both standard RFC 1628 UPS MIB OIDs and enterprise-specific OIDs from vendor 44782.
 
-## Standard UPS MIB OIDs (RFC 1628)
+## Implemented OIDs by Service
 
-### UPS Identity
-- **upsIdentModel** (.1.3.6.1.2.1.33.1.1.2.0) - "6000VA"
-- **upsIdentUPSSoftwareVersion** (.1.3.6.1.2.1.33.1.1.3.0) - "VER 6.xxx"
+### System Information Service
+Shows static UPS system information and configuration.
 
-### UPS Battery Status
-- **upsBatteryStatus** (.1.3.6.1.2.1.33.1.2.1.0) - 2 (batteryNormal)
-- **upsSecondsOnBattery** (.1.3.6.1.2.1.33.1.2.2.0) - 0
-- **upsEstimatedMinutesRemaining** (.1.3.6.1.2.1.33.1.2.3.0) - 15 minutes
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.2.1.33.1.1.2.0 | upsIdentModel | "6000VA" | - |
+| .1.3.6.1.2.1.33.1.1.3.0 | upsIdentUPSSoftwareVersion | "VER 6.xxx" | - |
+| .1.3.6.1.2.1.33.1.1.4.0 | upsIdentAgentSoftwareVersion | "2.0.0" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.2.0 | ups1equipmentManufacturer | "Others" | - |
+| .1.3.6.1.4.1.44782.1.4.1.5.0 | systemSerialNumber | "5A1903026810Q9100039" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.6.0 | ups1installationTime | "2020-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.8.0 | ups1maintenanceExpirationTime | "2022-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.9.0 | ups1batteryInstallationReplacementTime | "2021-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.10.0 | ups1nextMaintenanceTimeOfBattery | "2025-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.11.0 | ups1ratedPower | 5000 | W |
+| .1.3.6.1.4.1.44782.1.4.4.1.12.0 | ups1ratedCapacityOfBattery | 100 | Ah |
+| .1.3.6.1.4.1.44782.1.4.4.1.14.0 | ups1numberOfBatteries | 1 | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.15.0 | ups1numberOfBatteriesInASingleGroup | 16 | - |
 
-### UPS Battery Measurements
-- **upsBatteryVoltage** (.1.3.6.1.2.1.33.1.2.5.0) - 2179 (217.9V)
-- **upsBatteryCurrent** (.1.3.6.1.2.1.33.1.2.6.0) - 0
-- **upsBatteryTemperature** (.1.3.6.1.2.1.33.1.2.7.0) - 28 to -29°C
+### Battery Status Service
+Monitors battery health, charge level, and runtime.
 
-### UPS Input
-- **upsInputLineBads** (.1.3.6.1.2.1.33.1.3.1.0) - 0
-- **upsInputNumLines** (.1.3.6.1.2.1.33.1.3.2.0) - 1
-- **upsInputFrequency** (.1.3.6.1.2.1.33.1.3.3.1.2.1) - 500 (50.0 Hz)
-- **upsInputVoltage** (.1.3.6.1.2.1.33.1.3.3.1.3.1) - 233 to 229V
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.2.1.33.1.2.1.0 | upsBatteryStatus | 2 (batteryNormal) | - | - |
+| .1.3.6.1.2.1.33.1.2.2.0 | upsSecondsOnBattery | 0 | seconds | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.16.0 | ups1batteryStatus (enterprise) | 2 | - | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.17.0 | ups1batteryTimeRemaining | 15 | minutes → seconds | WARN: 600s, CRIT: 300s |
+| .1.3.6.1.4.1.44782.1.4.4.1.18.0 | ups1remainingCapacityOfBattery | 100 | % | WARN: 20%, CRIT: 10% |
+| .1.3.6.1.4.1.44782.1.4.4.1.72.0 | ups1batteryAbnormal | 0 | flag | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.73.0 | ups1batteryPowered | 0 | flag | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.74.0 | ups1batteryLowVoltage | 0 | flag | - |
 
-### UPS Output  
-- **upsOutputSource** (.1.3.6.1.2.1.33.1.4.1.0) - 3 (normal)
-- **upsOutputFrequency** (.1.3.6.1.2.1.33.1.4.2.0) - 500 (50.0 Hz)
-- **upsOutputNumLines** (.1.3.6.1.2.1.33.1.4.3.0) - 1
-- **upsOutputVoltage** (.1.3.6.1.2.1.33.1.4.4.1.2.1) - 233 to 229V
-- **upsOutputCurrent** (.1.3.6.1.2.1.33.1.4.4.1.3.1) - 0
-- **upsOutputPower** (.1.3.6.1.2.1.33.1.4.4.1.4.1) - 0W
-- **upsOutputPercentLoad** (.1.3.6.1.2.1.33.1.4.4.1.5.1) - 0%
+### Power Status Service  
+Monitors power source, operational mode, and power failures.
 
-### UPS Bypass
-- **upsBypassFrequency** (.1.3.6.1.2.1.33.1.5.1.0) - 500 (50.0 Hz)
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.2.1.33.1.4.1.0 | upsOutputSource | 3 (normal) | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.39.0 | ups1powerSupplyMode | 2 (online) | - |
+| .1.3.6.1.4.1.935.1.1.1.4.1.1.0 | upsBaseOutputStatus | 2 (onLine) | - |
+| .1.3.6.1.2.1.33.1.3.1.0 | upsInputLineBads | 0 | count |
+| .1.3.6.1.4.1.44782.1.4.4.1.77.0 | ups1inputAbnormal | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.78.0 | ups1outputAbnormal | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.80.0 | ups1bypassStatus | 1 | flag |
 
-## Enterprise-Specific OIDs
+### Alarm Status Service
+Monitors system alarms and critical conditions.
 
-### Additional Battery Information
-- **upsBaseBatteryStatus** (.1.3.6.1.4.1.935.1.1.1.2.1.1.0) - 2
-- **upsBaseBatteryTimeOnBattery** (.1.3.6.1.4.1.935.1.1.1.2.1.2.0) - 0
-- **upsSmartBatteryCapacity** (.1.3.6.1.4.1.935.1.1.1.2.2.1.0) - 100%
-- **upsSmartBatteryRunTimeRemaining** (.1.3.6.1.4.1.935.1.1.1.2.2.4.0) - 900 (15 min)
-- **upsSmartInputLineVoltage** (.1.3.6.1.4.1.935.1.1.1.3.2.1.0) - 2329 to 2298
-- **upsBaseOuputStatus** (.1.3.6.1.4.1.935.1.1.1.4.1.1.0) - 1
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.4.1.44782.1.4.4.1.71.0 | ups1abnormalCommunication | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.76.0 | ups1temperatureAbnormal | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.79.0 | ups1overLoad | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.81.0 | ups1fanFailure | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.85.0 | ups1shutdownRequest | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.86.0 | ups1testInProgress | 1 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.89.0 | ups1shutdownImminent | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.93.0 | ups1lowBatteryShutdownImminent | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.94.0 | ups1systemStatus | 1 | status |
 
-### Additional System Status (Proprietary OIDs)
-- **ups1batteryStatus** (.1.3.6.1.4.1.44782.1.4.4.1.16.0) - "2"
-- **ups1batteryTimeRemaining** (.1.3.6.1.4.1.44782.1.4.4.1.17.0) - "15"
-- **ups1remainingCapacityOfBattery** (.1.3.6.1.4.1.44782.1.4.4.1.18.0) - "100"
-- **ups1batteryTemperature** (.1.3.6.1.4.1.44782.1.4.4.1.21.0) - "28.0" to "29.0"
-- **ups1inputUPhaseVoltage** (.1.3.6.1.4.1.44782.1.4.4.1.27.0) - "231.9" to "229.4"
-- **ups1powerSupplyMode** (.1.3.6.1.4.1.44782.1.4.4.1.39.0) - "3"
-- **ups1outputUPhaseVoltage** (.1.3.6.1.4.1.44782.1.4.4.1.42.0) - "231.9" to "229.4"
-- **ups1outputPhaseLoadRate** (.1.3.6.1.4.1.44782.1.4.4.1.51.0) - "0"
-- **ups1bypassUPhaseVoltage** (.1.3.6.1.4.1.44782.1.4.4.1.59.0) - "232.9" to "229.8"
+### Physical Measurement Services
 
-## Key Metrics to Monitor
+#### Input Voltage Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.27.0 | ups1inputUPhaseVoltage | 231.9 | V | WARN: 250V/210V, CRIT: 260V/200V |
 
-Based on the highlighted OIDs, the following metrics should be monitored:
+#### Output Voltage Service  
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.42.0 | ups1outputUPhaseVoltage | 231.9 | V | WARN: 250V/210V, CRIT: 260V/200V |
 
-1. **Battery Health**
-   - Battery status (normal/charging/discharging)
-   - Battery charge percentage
-   - Battery runtime remaining
-   - Battery voltage
-   - Battery temperature
+#### Bypass Voltage Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.59.0 | ups1bypassUPhaseVoltage | 232.9 | V | WARN: 250V/210V, CRIT: 260V/200V |
 
-2. **Power Input**
-   - Input voltage
-   - Input frequency
-   - Input line failures
+#### Battery Voltage Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.19.0 | ups1batteryVoltage | 217.9 | V | WARN: 180V, CRIT: 170V |
 
-3. **Power Output**
-   - Output voltage
-   - Output frequency
-   - Output current
-   - Output power (watts)
-   - Output load percentage
+#### Battery Current Service
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.4.1.44782.1.4.4.1.20.0 | ups1batteryChargingAndDischargingCurrent | 0.00 | A |
 
-4. **System Status**
-   - UPS operational status
-   - Power supply mode
-   - Bypass voltage and frequency
+#### Output Current Service
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.4.1.44782.1.4.4.1.45.0 | ups1outputUPhaseCurrent | 0.00 | A |
+
+#### Temperature Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.21.0 | ups1batteryTemperature | 28.0 | °C | WARN: 40°C/10°C, CRIT: 45°C/5°C |
+
+#### Input Frequency Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.24.0 | ups1inputUPhaseFrequency | 50.0 | Hz | WARN: 51Hz/49Hz, CRIT: 52Hz/48Hz |
+
+#### Output Frequency Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.40.0 | ups1outputFrequency | 50.0 | Hz | WARN: 51Hz/49Hz, CRIT: 52Hz/48Hz |
+
+#### Bypass Frequency Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.57.0 | ups1bypassFrequency | 50.0 | Hz | WARN: 51Hz/49Hz, CRIT: 52Hz/48Hz |
+
+#### Output Power Service
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.4.1.44782.1.4.4.1.48.0 | ups1outputUPhaseActivePower | 0.00 | W |
+
+#### Output Load Service
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.51.0 | ups1outputUPhaseLoadRate | 0.0 | % | WARN: 80%, CRIT: 90%
+
+## Configuration OIDs (Used for Dynamic Defaults)
+
+The device provides configuration thresholds that the plugin uses as dynamic defaults when available:
+
+| OID | Description | Example Value | Used In Service |
+|-----|-------------|---------------|-----------------|
+| .1.3.6.1.4.1.44782.1.1.3.1.0 | inputVoltUpConfig | 242 | Input Voltage |
+| .1.3.6.1.4.1.44782.1.1.3.2.0 | inputVoltLowConfig | 187 | Input Voltage |
+| .1.3.6.1.4.1.44782.1.1.3.3.0 | outputVoltUpConfig | 225 | Output Voltage |
+| .1.3.6.1.4.1.44782.1.1.3.4.0 | outputVoltLowConfig | 215 | Output Voltage |
+| .1.3.6.1.4.1.44782.1.1.3.5.0 | upsTempUpConfig | 40 | Temperature |
+| .1.3.6.1.4.1.44782.1.1.3.6.0 | upsOutputLoadUpConfig | 0 | Output Load |
+| .1.3.6.1.4.1.44782.1.1.3.7.0 | upsBatteryVoltLowConfig | 180 | Battery Voltage |
+
+## Data Conversions
+
+The plugin performs the following conversions:
+
+- **Enterprise string values**: Parsed as floats (e.g., "231.9" → 231.9)
+- **Minutes to seconds**: Battery runtime converted for consistent time metrics
+- **Status mappings**: Integer values mapped to descriptive strings
+- **Alarm flags**: 0/1 values interpreted as normal/alarm states
+
+## Status Value Mappings
+
+### Battery Status (upsBatteryStatus)
+- 1: unknown
+- 2: batteryNormal
+- 3: batteryLow  
+- 4: batteryDepleted
+
+### Output Source (upsOutputSource)
+- 1: other
+- 2: none
+- 3: normal
+- 4: bypass
+- 5: battery
+- 6: booster
+- 7: reducer
+
+### Power Supply Mode (ups1powerSupplyMode)
+- 1: standby
+- 2: online
+- 3: battery
+- 4: bypass
+- 5: eco
+
+### Base Output Status (upsBaseOutputStatus)
+- 1: unknown
+- 2: onLine
+- 3: onBattery
+- 4: onSmartBoost
+- 5: timedSleeping
+- 6: softwareBypass
+- 7: off
+- 8: rebooting
+- 9: switchedBypass
+- 10: hardwareFailureBypass
+- 11: sleepingUntilPowerReturn
+- 12: onSmartTrim
+- 13: ecoMode
+- 14: hotStandby
+- 15: onBatteryTest
+
+## Service Summary
+
+The plugin creates 18 CheckMK services:
+
+1. **UPS System Info** - Static information and configuration
+2. **UPS Battery Status** - Combined battery health, charge, runtime, and alarms
+3. **UPS Battery Charge** - Individual battery charge percentage monitoring
+4. **UPS Battery Runtime** - Individual battery runtime remaining monitoring
+5. **UPS Power Status** - Power source and operational mode
+6. **UPS Alarm Status** - System alarms and warnings
+7. **UPS Input Voltage** - AC input voltage monitoring
+8. **UPS Output Voltage** - AC output voltage monitoring
+9. **UPS Bypass Voltage** - Bypass line voltage monitoring
+10. **UPS Battery Voltage** - DC battery voltage monitoring
+11. **UPS Battery Current** - Battery charging/discharging current
+12. **UPS Output Current** - Output current monitoring
+13. **UPS Temperature** - System temperature monitoring
+14. **UPS Input Frequency** - Input frequency monitoring
+15. **UPS Output Frequency** - Output frequency monitoring
+16. **UPS Bypass Frequency** - Bypass frequency monitoring
+17. **UPS Output Power** - Power consumption in watts
+18. **UPS Output Load** - Load percentage monitoring
 
 ## Notes
-- Values are provided in various units (decivolts, centihertz, etc.) and need conversion
-- Temperature readings show some variation between different OIDs
-- The device supports both standard RFC 1628 MIB and proprietary OIDs
-- Model identified as "6000VA" Wiseway UPS
+
+- The plugin uses enterprise OIDs (44782) as primary data source with RFC 1628 OIDs as fallback
+- All time metrics are stored in seconds (SI base unit)
+- Thresholds can be customized via CheckMK WATO interface
+- Device configuration values are used as dynamic defaults when available
+- Model identified as Wiseway UPS with various capacity ratings (6000VA, 10kVA)
