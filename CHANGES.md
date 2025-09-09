@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+
+### Fixed
+
+## 0.3.1 - 2025-09-09
+### Changed
 - **UPS Battery Status** service now only shows battery status and alarms (charge and runtime moved to dedicated services)
 - **UPS System Info** service now displays all key information in the summary instead of notices:
   - Model, manufacturer, and serial number shown in main summary
