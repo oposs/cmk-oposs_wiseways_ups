@@ -1,24 +1,26 @@
 # CheckMK Wiseways UPS SNMP Plugin
 
-A comprehensive CheckMK SNMP plugin for monitoring Wiseways UPS devices (6000VA and compatible models).
+A comprehensive CheckMK SNMP plugin for monitoring Wiseways UPS devices (6000VA, 10kVA and compatible models).
 
 ## Overview
 
-This plugin provides complete monitoring of Wiseways UPS systems via SNMP, including:
+This plugin provides complete monitoring of Wiseways UPS systems via SNMP with 18 specialized services covering every aspect of UPS operation:
 
-- **System Information**: Model identification and software version
-- **Battery Status**: Charge level, runtime, voltage, temperature, and health status
-- **Power Monitoring**: Input/output/bypass voltages with deviation alerts
-- **Load Management**: Output load percentage, power consumption, and current draw
-- **Frequency Stability**: Input/output/bypass frequency monitoring
+- **System Information**: Model, serial number, firmware versions, maintenance schedules
+- **Battery Monitoring**: Individual services for charge, runtime, status, and alarms
+- **Power Monitoring**: Separate services for input/output/bypass/battery voltages
+- **Load Management**: Output load percentage, power consumption, and current monitoring
+- **Frequency Stability**: Individual monitoring for input/output/bypass frequencies
+- **Alarm System**: Comprehensive alarm detection and status reporting
 
 ## Features
 
-- **Automatic Data Normalization**: Converts SNMP values to standard units (decivolts→volts, centihertz→Hz)
-- **Intelligent OID Selection**: Automatically uses the most precise OID when multiple sources provide the same metric
-- **Multi-line Graphs**: Logically groups related metrics (all voltages, all frequencies) for easy comparison
-- **Comprehensive Thresholds**: Configurable warning/critical levels for all metrics
-- **Enterprise & Standard MIB Support**: Works with both RFC 1628 standard UPS MIB and Wiseways enterprise OIDs
+- **18 Specialized Services**: Each monitoring aspect has its own dedicated service for granular control
+- **Automatic Data Normalization**: Converts SNMP values to standard units (decivolts→volts, minutes→seconds)
+- **Maintenance Monitoring**: Automatic warnings for expired maintenance and battery service schedules
+- **Smart Graph Organization**: Unit-based grouping for combined overview graphs
+- **Dynamic Thresholds**: Uses device configuration values as defaults when available
+- **Enterprise & Standard MIB Support**: Works with both RFC 1628 standard UPS MIB and Wiseways enterprise OIDs (44782)
 
 ## Installation
 
@@ -67,53 +69,92 @@ Ensure your Wiseways UPS is accessible via SNMP:
 
 ### Service Discovery
 
-The plugin will automatically discover 5 services per UPS:
+The plugin will automatically discover up to 18 services per UPS:
 
-- **UPS Info**: Static identification information (no thresholds)
-- **UPS Battery**: Battery health and status monitoring
-- **UPS Power**: Voltage monitoring and power source status
-- **UPS Load**: Output load and power consumption
-- **UPS Frequency**: Frequency stability monitoring
+#### Information Services
+- **UPS System Info**: Model, serial, firmware, maintenance dates
+- **UPS Battery Status**: Battery state and alarms (without charge/runtime)
+- **UPS Power Status**: Power source, operational mode, line failures
+- **UPS Alarm Status**: System-wide alarm monitoring
+
+#### Battery Monitoring Services
+- **UPS Battery Charge**: Battery charge percentage
+- **UPS Battery Runtime**: Remaining runtime in seconds
+- **UPS Battery Voltage**: DC battery voltage
+- **UPS Battery Current**: Charging/discharging current
+- **UPS Battery Temperature**: Battery temperature monitoring
+
+#### Voltage Monitoring Services  
+- **UPS Input Voltage**: AC input voltage
+- **UPS Output Voltage**: AC output voltage
+- **UPS Bypass Voltage**: Bypass line voltage (when available)
+
+#### Frequency Monitoring Services
+- **UPS Input Frequency**: Input frequency stability
+- **UPS Output Frequency**: Output frequency stability
+- **UPS Bypass Frequency**: Bypass frequency (when available)
+
+#### Load and Power Services
+- **UPS Output Load**: Load percentage monitoring
+- **UPS Output Power**: Power consumption in watts
+- **UPS Output Current**: Output current monitoring
 
 ### Threshold Configuration
 
-Configure monitoring thresholds in CheckMK under "Setup" > "Services" > "Service monitoring rules":
+Configure monitoring thresholds in CheckMK under "Setup" > "Services" > "Service monitoring rules" > "OPOSS Wiseways UPS":
 
-#### UPS Battery Thresholds
-- **Battery Charge Lower**: Warning at 20%, Critical at 10%
-- **Runtime Lower**: Warning at 10 minutes, Critical at 5 minutes
-- **Temperature**: Warning at 40°C/10°C, Critical at 45°C/5°C
+All thresholds can be configured through a single unified ruleset that applies to all relevant services:
 
-#### UPS Power Thresholds
-- **Input Voltage**: Warning at 210-250V, Critical at 200-260V
-- **Output Voltage**: Warning at 210-250V, Critical at 200-260V
+#### Battery Thresholds
+- **Battery Charge** (`battery_charge_lower`): Warning at 20%, Critical at 10%
+- **Battery Runtime** (`battery_runtime_lower`): Warning at 10 minutes, Critical at 5 minutes
+- **Battery Voltage** (`battery_voltage_lower`): Warning at 180V, Critical at 170V
+- **Battery Temperature** (`temp_upper/temp_lower`): Warning at 40°C/10°C, Critical at 45°C/5°C
 
-#### UPS Load Thresholds
-- **Output Load**: Warning at 80%, Critical at 90%
+#### Voltage Thresholds
+- **Input Voltage** (`input_voltage_upper/lower`): Warning at 250V/210V, Critical at 260V/200V
+- **Output Voltage** (`output_voltage_upper/lower`): Warning at 250V/210V, Critical at 260V/200V
+- **Bypass Voltage** (`bypass_voltage_upper/lower`): Warning at 250V/210V, Critical at 260V/200V
 
-#### UPS Frequency Thresholds
-- **Frequency Range**: Warning at 49-51Hz, Critical at 48-52Hz
+#### Frequency Thresholds
+- **All Frequencies** (`frequency_upper/lower`): Warning at 51Hz/49Hz, Critical at 52Hz/48Hz
+
+#### Load and Power Thresholds
+- **Output Load** (`load_upper`): Warning at 80%, Critical at 90%
+- **Output Current** (`output_current_upper`): Configurable, no default
+- **Output Power** (`power_upper`): Configurable, no default
+
+Note: The plugin uses device-reported configuration values as dynamic defaults when available (e.g., input voltage limits from the UPS configuration).
 
 ## Metrics and Graphs
 
-### Multi-line Graphs
+### Graph Organization
 
-The plugin creates optimized multi-line graphs for related metrics:
+The plugin provides two types of graphs:
 
-1. **UPS Voltages**: Combines input, output, and bypass voltages on a single graph
-2. **UPS Frequencies**: Shows input, output, and bypass frequencies together
-3. **Battery Status**: Displays charge percentage and runtime remaining
-4. **Load & Power**: Combines load percentage, power (watts), and current
+#### Service-Specific Graphs
+Each service displays its own dedicated graph with relevant metrics and thresholds.
+
+#### Combined Overview Graphs (Host Level)
+These graphs combine metrics from multiple services for comparative analysis:
+
+1. **UPS All Voltages**: All voltages (input, output, bypass, battery) on one graph
+2. **UPS AC Voltages**: AC voltages only (input, output, bypass)
+3. **UPS Frequencies**: All frequencies (input, output, bypass) together
+4. **UPS Currents**: Output and battery currents combined
+5. **UPS Battery Time**: Runtime and time-on-battery metrics
 
 ### Metric Units
 
 All metrics use base SI units for consistency:
-- Time: seconds (not minutes or milliseconds)
-- Voltage: volts (converted from decivolts)
-- Frequency: hertz (converted from centihertz)
-- Temperature: degrees Celsius
-- Power: watts
-- Current: amperes
+- **Time**: seconds (converted from minutes in SNMP)
+- **Voltage**: volts (converted from decivolts or string format)
+- **Frequency**: hertz (converted from centihertz or string format)
+- **Temperature**: degrees Celsius
+- **Power**: watts
+- **Current**: amperes
+- **Charge**: percentage
+- **Load**: percentage
 
 ## Supported OIDs
 
@@ -141,22 +182,37 @@ The plugin monitors both standard RFC 1628 UPS MIB OIDs and Wiseways enterprise-
 
 1. Verify SNMP connectivity:
    ```bash
-   snmpwalk -v2c -c <community> <ups_ip> .1.3.6.1.2.1.33.1.1.1.0
+   snmpwalk -v2c -c <community> <ups_ip> .1.3.6.1.2.1.33.1.1.5.0
    ```
+   This should return a string containing "Wiseway3" for compatible devices.
 
 2. Check SNMP configuration in CheckMK host settings
 
-3. Ensure the UPS supports standard UPS MIB
+3. Ensure the UPS supports standard UPS MIB and/or Wiseways enterprise OIDs
+
+4. Run manual discovery:
+   ```bash
+   cmk -vvI --detect-plugins=oposs_wiseways_ups <hostname>
+   ```
+
+### Fewer Than 18 Services
+
+Not all services may be discovered depending on UPS capabilities:
+- Bypass services only appear if bypass voltage/frequency data is available
+- Battery current may not be available on all models
+- Some older models may not report all metrics
 
 ### Incorrect Values
 
-- Check SNMP OID responses manually to verify data
-- The plugin automatically normalizes values and selects the most precise OID
-- Temperature readings may vary between OIDs; the plugin uses the most stable source
+- The plugin automatically converts enterprise string format values (e.g., "231.9") to floats
+- Minutes are converted to seconds for all time-based metrics
+- Special value -99998 indicates unavailable data and is handled gracefully
 
-### Missing Metrics
+### Missing Graphs
 
-Some metrics (bypass voltage/frequency) may not be available when the UPS is not in bypass mode. These are marked as optional in graphs.
+- Individual service graphs appear with their respective services
+- Combined overview graphs appear at the host level (not under specific services)
+- This is the intended behavior for cross-service visualization
 
 ## License
 
