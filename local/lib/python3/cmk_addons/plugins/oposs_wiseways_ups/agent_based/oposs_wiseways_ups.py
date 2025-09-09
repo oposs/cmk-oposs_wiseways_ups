@@ -931,8 +931,8 @@ def check_oposs_wiseways_ups_battery_status(section: Dict[str, Any]) -> CheckRes
     # Time on battery
     time_on_battery = section.get("seconds_on_battery", 0)
     if time_on_battery > 0:
-        yield Metric("time_on_battery", time_on_battery)
         yield Result(state=State.WARN, summary=f"On battery: {render.timespan(time_on_battery)}")
+    yield Metric("time_on_battery", time_on_battery)
     
     # Alarm flags
     alarms = []
