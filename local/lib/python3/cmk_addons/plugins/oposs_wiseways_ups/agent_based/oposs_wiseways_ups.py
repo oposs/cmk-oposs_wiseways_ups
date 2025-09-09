@@ -608,7 +608,7 @@ def check_oposs_wiseways_ups_temperature(
 
 check_plugin_oposs_wiseways_ups_temperature = CheckPlugin(
     name="oposs_wiseways_ups_temperature",
-    service_name="UPS Temperature",
+    service_name="UPS Battery Temperature",
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_temperature,
     check_function=check_oposs_wiseways_ups_temperature,
@@ -907,15 +907,13 @@ check_plugin_oposs_wiseways_ups_battery_runtime = CheckPlugin(
 # Subsystem Status Services (Combined)
 # ============================================================================
 
-# Check plugin for UPS Battery Status (combined)
+# Check plugin for UPS Battery Status (status and alarms only)
 def discover_oposs_wiseways_ups_battery_status(section: Dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_oposs_wiseways_ups_battery_status(
-    params: Mapping[str, Any], section: Dict[str, Any]
-) -> CheckResult:
+def check_oposs_wiseways_ups_battery_status(section: Dict[str, Any]) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
         return
@@ -930,50 +928,26 @@ def check_oposs_wiseways_ups_battery_status(
         state = State.WARN
     yield Result(state=state, summary=f"Status: {status}")
     
-    # Battery charge
-    charge_percent = section.get("battery_charge_percent", 0)
-    if charge_percent <= 0:
-        yield Result(state=State.UNKNOWN, summary="Charge: unknown")
-        yield Metric("battery_charge", float('nan'))
-    else:
-        yield from check_levels(
-            charge_percent,
-            levels_lower=params.get("battery_charge_lower"),
-            metric_name="battery_charge",
-            label="Charge",
-            render_func=render.percent,
-            boundaries=(0, 100),
-        )
-    
-    # Runtime (in seconds)
-    runtime = section.get("battery_runtime_seconds", 0)
-    if runtime <= 0:
-        yield Result(state=State.UNKNOWN, summary="Runtime: unknown")
-        yield Metric("battery_runtime", float('nan'))
-    else:
-        yield from check_levels(
-            runtime,
-            levels_lower=params.get("battery_runtime_lower"),
-            metric_name="battery_runtime",
-            label="Runtime",
-            render_func=render.timespan,
-        )
-    
     # Time on battery
     time_on_battery = section.get("seconds_on_battery", 0)
     if time_on_battery > 0:
         yield Metric("time_on_battery", time_on_battery)
-        yield Result(state=State.OK, notice=f"Time on battery: {render.timespan(time_on_battery)}")
+        yield Result(state=State.WARN, summary=f"On battery: {render.timespan(time_on_battery)}")
     
     # Alarm flags
+    alarms = []
     if section.get("battery_abnormal", 0) == 1:
-        yield Result(state=State.WARN, summary="Battery abnormal alarm")
+        alarms.append("abnormal")
     
     if section.get("battery_powered", 0) == 1:
-        yield Result(state=State.WARN, summary="Running on battery")
+        alarms.append("battery powered")
     
     if section.get("battery_low_voltage", 0) == 1:
-        yield Result(state=State.CRIT, summary="Battery low voltage alarm")
+        alarms.append("low voltage")
+    
+    if alarms:
+        alarm_state = State.CRIT if "low voltage" in alarms else State.WARN
+        yield Result(state=alarm_state, summary=f"Alarms: {', '.join(alarms)}")
 
 
 check_plugin_oposs_wiseways_ups_battery_status = CheckPlugin(
@@ -982,11 +956,6 @@ check_plugin_oposs_wiseways_ups_battery_status = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_battery_status,
     check_function=check_oposs_wiseways_ups_battery_status,
-    check_ruleset_name="oposs_wiseways_ups",
-    check_default_parameters={
-        "battery_charge_lower": ("fixed", (20.0, 10.0)),
-        "battery_runtime_lower": ("fixed", (600.0, 300.0)),  # 10min, 5min in seconds
-    },
 )
 
 
@@ -1138,47 +1107,57 @@ def check_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> CheckResult
         yield Result(state=State.UNKNOWN, summary="No data")
         return
     
-    # Basic info
+    # Collect all information
     model = section.get("model", "Unknown")
     manufacturer = section.get("manufacturer", "Unknown")
     serial = section.get("serial_number", "Unknown")
-    
-    yield Result(
-        state=State.OK,
-        summary=f"Model: {model}, Manufacturer: {manufacturer}"
-    )
-    
-    if serial != "Unknown":
-        yield Result(state=State.OK, notice=f"Serial: {serial}")
-    
-    # Firmware versions
     fw_version = section.get("firmware_version", "Unknown")
     agent_version = section.get("agent_version", "Unknown")
     
-    if fw_version != "Unknown":
-        yield Result(state=State.OK, notice=f"Firmware: {fw_version}")
-    if agent_version != "Unknown":
-        yield Result(state=State.OK, notice=f"Agent: {agent_version}")
+    # Build main summary with key information
+    summary_parts = []
+    summary_parts.append(f"Model: {model}")
+    if manufacturer != "Unknown":
+        summary_parts.append(f"Mfr: {manufacturer}")
+    if serial != "Unknown":
+        summary_parts.append(f"S/N: {serial}")
+    
+    yield Result(state=State.OK, summary=", ".join(summary_parts))
+    
+    # Software versions
+    if fw_version != "Unknown" or agent_version != "Unknown":
+        version_parts = []
+        if fw_version != "Unknown":
+            version_parts.append(f"FW: {fw_version}")
+        if agent_version != "Unknown":
+            version_parts.append(f"Agent: {agent_version}")
+        yield Result(state=State.OK, summary="Versions: " + ", ".join(version_parts))
     
     # Power ratings
     rated_power = section.get("rated_power", 0)
     rated_battery = section.get("rated_battery_capacity", 0)
     
-    if rated_power > 0:
-        yield Result(state=State.OK, notice=f"Rated power: {rated_power:.0f}W")
-    if rated_battery > 0:
-        yield Result(state=State.OK, notice=f"Rated battery capacity: {rated_battery:.0f}Ah")
+    if rated_power > 0 or rated_battery > 0:
+        rating_parts = []
+        if rated_power > 0:
+            rating_parts.append(f"{rated_power:.0f}W")
+        if rated_battery > 0:
+            rating_parts.append(f"{rated_battery:.0f}Ah")
+        yield Result(state=State.OK, summary="Ratings: " + ", ".join(rating_parts))
     
     # Battery configuration
     num_batteries = section.get("number_of_batteries", 0)
     batteries_per_group = section.get("batteries_per_group", 0)
     
-    if num_batteries > 0:
-        yield Result(state=State.OK, notice=f"Number of batteries: {num_batteries}")
-    if batteries_per_group > 0:
-        yield Result(state=State.OK, notice=f"Batteries per group: {batteries_per_group}")
+    if num_batteries > 0 or batteries_per_group > 0:
+        battery_parts = []
+        if num_batteries > 0:
+            battery_parts.append(f"{num_batteries} batteries")
+        if batteries_per_group > 0:
+            battery_parts.append(f"{batteries_per_group} per group")
+        yield Result(state=State.OK, summary="Battery config: " + ", ".join(battery_parts))
     
-    # Maintenance dates
+    # Installation and maintenance dates as notices for less clutter
     installation = section.get("installation_time", "Unknown")
     maintenance_exp = section.get("maintenance_expiration", "Unknown")
     battery_install = section.get("battery_installation", "Unknown")
@@ -1187,11 +1166,30 @@ def check_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> CheckResult
     if installation != "Unknown":
         yield Result(state=State.OK, notice=f"Installation: {installation}")
     if maintenance_exp != "Unknown":
-        yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
+        # Check if maintenance has expired
+        from datetime import datetime
+        try:
+            exp_date = datetime.strptime(maintenance_exp, "%Y-%m-%d")
+            if exp_date < datetime.now():
+                yield Result(state=State.WARN, summary=f"Maintenance expired: {maintenance_exp}")
+            else:
+                yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
+        except:
+            yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
+    
     if battery_install != "Unknown":
         yield Result(state=State.OK, notice=f"Battery installation: {battery_install}")
     if battery_next_maint != "Unknown":
-        yield Result(state=State.OK, notice=f"Battery next maintenance: {battery_next_maint}")
+        # Check if battery maintenance is due
+        from datetime import datetime
+        try:
+            maint_date = datetime.strptime(battery_next_maint, "%Y-%m-%d")
+            if maint_date < datetime.now():
+                yield Result(state=State.WARN, summary=f"Battery maintenance due: {battery_next_maint}")
+            else:
+                yield Result(state=State.OK, notice=f"Battery next maintenance: {battery_next_maint}")
+        except:
+            yield Result(state=State.OK, notice=f"Battery next maintenance: {battery_next_maint}")
 
 
 check_plugin_oposs_wiseways_ups_system_info = CheckPlugin(

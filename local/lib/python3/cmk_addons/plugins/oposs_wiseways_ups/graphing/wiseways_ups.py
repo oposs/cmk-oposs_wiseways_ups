@@ -262,7 +262,7 @@ graph_ups_currents = Graph(
 # Temperature graph
 graph_ups_temperature = Graph(
     name="ups_temperature",
-    title=Title("UPS Temperature"),
+    title=Title("UPS Battery Temperature"),
     simple_lines=[
         "temperature",
     ],

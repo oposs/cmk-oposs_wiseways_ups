@@ -10,8 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+- **UPS Battery Status** service now only shows battery status and alarms (charge and runtime moved to dedicated services)
+- **UPS System Info** service now displays all key information in the summary instead of notices:
+  - Model, manufacturer, and serial number shown in main summary
+  - Firmware and agent versions displayed in summary
+  - Power ratings and battery configuration visible at a glance
+  - Maintenance expiration dates trigger warnings when overdue
+- **UPS Battery Temperature** service name corrected from "UPS Temperature"
 
 ### Fixed
+- Removed duplicate battery charge and runtime metrics from Battery Status service
+- System Info service now provides comprehensive visibility of all system details
 
 ## 0.3.0 - 2025-09-09
 ### New
