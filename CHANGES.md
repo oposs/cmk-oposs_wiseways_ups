@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### New
+
+### Changed
+
+### Fixed
+
+## 0.4.0 - 2025-12-11
+### New
 - Added **UPS Environment** service for THS environmental sensor monitoring:
   - Temperature monitoring (thsOneTempData - .1.3.6.1.4.1.44782.1.2.1.1.1.0)
   - Humidity monitoring (thsOneHumiData - .1.3.6.1.4.1.44782.1.2.1.1.2.0)
@@ -15,10 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Service auto-discovered only when THS sensor is connected
 - Added graphing metrics for environmental data (env_temperature, env_humidity)
 - Added environment-specific graphs (temperature, humidity, combined)
-
-### Changed
-
-### Fixed
 
 ## 0.3.1 - 2025-09-09
 ### Changed
