@@ -52,9 +52,24 @@ metric_battery_current = Metric(
 
 metric_temperature = Metric(
     name="temperature",
-    title=Title("Temperature"),
+    title=Title("Battery Temperature"),
     unit=unit_celsius,
     color=Color.ORANGE,
+)
+
+# Environmental sensor metrics
+metric_env_temperature = Metric(
+    name="env_temperature",
+    title=Title("Environment Temperature"),
+    unit=unit_celsius,
+    color=Color.RED,
+)
+
+metric_env_humidity = Metric(
+    name="env_humidity",
+    title=Title("Environment Humidity"),
+    unit=unit_percentage,
+    color=Color.CYAN,
 )
 
 # Voltage metrics
@@ -259,7 +274,7 @@ graph_ups_currents = Graph(
     optional=["battery_current"],  # May be zero or not present
 )
 
-# Temperature graph
+# Temperature graph (battery)
 graph_ups_temperature = Graph(
     name="ups_temperature",
     title=Title("UPS Battery Temperature"),
@@ -269,6 +284,32 @@ graph_ups_temperature = Graph(
     minimal_range=MinimalRange(
         lower=0,
         upper=50,
+    ),
+)
+
+# Environmental temperature graph
+graph_ups_env_temperature = Graph(
+    name="ups_env_temperature",
+    title=Title("UPS Environment Temperature"),
+    simple_lines=[
+        "env_temperature",
+    ],
+    minimal_range=MinimalRange(
+        lower=0,
+        upper=50,
+    ),
+)
+
+# Environmental humidity graph
+graph_ups_env_humidity = Graph(
+    name="ups_env_humidity",
+    title=Title("UPS Environment Humidity"),
+    simple_lines=[
+        "env_humidity",
+    ],
+    minimal_range=MinimalRange(
+        lower=0,
+        upper=100,
     ),
 )
 

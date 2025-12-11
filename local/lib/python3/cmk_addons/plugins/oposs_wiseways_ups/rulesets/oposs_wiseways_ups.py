@@ -255,6 +255,54 @@ def _form_spec_oposs_wiseways_ups():
                 ),
                 required=False,
             ),
+
+            # Environmental sensor parameters (THS sensor)
+            "env_temp_upper": DictElement(
+                parameter_form=SimpleLevels(
+                    title=Title("Environment temperature upper levels"),
+                    help_text=Help("Alert when environment temperature exceeds these levels"),
+                    level_direction=LevelDirection.UPPER,
+                    form_spec_template=Float(unit_symbol="°C"),
+                    prefill_fixed_levels=DefaultValue((35.0, 40.0)),
+                ),
+                required=False,
+            ),
+            "env_temp_lower": DictElement(
+                parameter_form=SimpleLevels(
+                    title=Title("Environment temperature lower levels"),
+                    help_text=Help("Alert when environment temperature drops below these levels"),
+                    level_direction=LevelDirection.LOWER,
+                    form_spec_template=Float(unit_symbol="°C"),
+                    prefill_fixed_levels=DefaultValue((10.0, 5.0)),
+                ),
+                required=False,
+            ),
+            "env_humidity_upper": DictElement(
+                parameter_form=SimpleLevels(
+                    title=Title("Environment humidity upper levels"),
+                    help_text=Help("Alert when environment humidity exceeds these levels"),
+                    level_direction=LevelDirection.UPPER,
+                    form_spec_template=Float(
+                        unit_symbol="%",
+                        custom_validate=[validators.NumberInRange(0, 100)]
+                    ),
+                    prefill_fixed_levels=DefaultValue((70.0, 80.0)),
+                ),
+                required=False,
+            ),
+            "env_humidity_lower": DictElement(
+                parameter_form=SimpleLevels(
+                    title=Title("Environment humidity lower levels"),
+                    help_text=Help("Alert when environment humidity drops below these levels"),
+                    level_direction=LevelDirection.LOWER,
+                    form_spec_template=Float(
+                        unit_symbol="%",
+                        custom_validate=[validators.NumberInRange(0, 100)]
+                    ),
+                    prefill_fixed_levels=DefaultValue((20.0, 10.0)),
+                ),
+                required=False,
+            ),
         },
     )
 

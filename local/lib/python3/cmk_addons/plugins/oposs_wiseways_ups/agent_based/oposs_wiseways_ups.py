@@ -251,6 +251,12 @@ OID_DEFINITIONS: List[OIDDefinition] = [
                   "output_load_up_config", converter=identity_float),
     OIDDefinition("battery_volt_low_config", "4.1.44782.1.1.3.7.0", "upsBatteryVoltLowConfig",
                   "battery_volt_low_config", converter=identity_float),
+
+    # Environmental sensor data (THS One)
+    OIDDefinition("env_temperature", "4.1.44782.1.2.1.1.1.0", "thsOneTempData",
+                  "env_temperature", converter=identity_float),
+    OIDDefinition("env_humidity", "4.1.44782.1.2.1.1.2.0", "thsOneHumiData",
+                  "env_humidity", converter=identity_float),
 ]
 
 
@@ -1198,4 +1204,68 @@ check_plugin_oposs_wiseways_ups_system_info = CheckPlugin(
     sections=["oposs_wiseways_ups"],
     discovery_function=discover_oposs_wiseways_ups_system_info,
     check_function=check_oposs_wiseways_ups_system_info,
+)
+
+
+# Check plugin for UPS Environment (THS sensor)
+def discover_oposs_wiseways_ups_environment(section: Dict[str, Any]) -> DiscoveryResult:
+    # Discover only if environmental sensor data is present
+    env_temp = section.get("env_temperature", 0)
+    env_humi = section.get("env_humidity", 0)
+    if section and (env_temp > 0 or env_humi > 0):
+        yield Service()
+
+
+def check_oposs_wiseways_ups_environment(
+    params: Mapping[str, Any], section: Dict[str, Any]
+) -> CheckResult:
+    if not section:
+        yield Result(state=State.UNKNOWN, summary="No data")
+        return
+
+    env_temp = section.get("env_temperature", 0)
+    env_humi = section.get("env_humidity", 0)
+
+    # Check if sensor data is available
+    if env_temp <= 0 and env_humi <= 0:
+        yield Result(state=State.UNKNOWN, summary="No environmental sensor data")
+        return
+
+    # Temperature check
+    if env_temp > 0:
+        yield from check_levels(
+            env_temp,
+            levels_upper=params.get("env_temp_upper", ("fixed", (35.0, 40.0))),
+            levels_lower=params.get("env_temp_lower", ("fixed", (10.0, 5.0))),
+            metric_name="env_temperature",
+            label="Temperature",
+            render_func=lambda v: f"{v:.1f}°C",
+        )
+
+    # Humidity check
+    if env_humi > 0:
+        yield from check_levels(
+            env_humi,
+            levels_upper=params.get("env_humidity_upper", ("fixed", (70.0, 80.0))),
+            levels_lower=params.get("env_humidity_lower", ("fixed", (20.0, 10.0))),
+            metric_name="env_humidity",
+            label="Humidity",
+            render_func=lambda v: f"{v:.0f}%",
+            boundaries=(0, 100),
+        )
+
+
+check_plugin_oposs_wiseways_ups_environment = CheckPlugin(
+    name="oposs_wiseways_ups_environment",
+    service_name="UPS Environment",
+    sections=["oposs_wiseways_ups"],
+    discovery_function=discover_oposs_wiseways_ups_environment,
+    check_function=check_oposs_wiseways_ups_environment,
+    check_ruleset_name="oposs_wiseways_ups",
+    check_default_parameters={
+        "env_temp_upper": ("fixed", (35.0, 40.0)),
+        "env_temp_lower": ("fixed", (10.0, 5.0)),
+        "env_humidity_upper": ("fixed", (70.0, 80.0)),
+        "env_humidity_lower": ("fixed", (20.0, 10.0)),
+    },
 )
