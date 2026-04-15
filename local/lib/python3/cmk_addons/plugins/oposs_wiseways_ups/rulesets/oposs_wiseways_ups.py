@@ -76,7 +76,7 @@ def _form_spec_oposs_wiseways_ups():
                         unit_symbol="V",
                         custom_validate=[validators.NumberInRange(0, 500)]
                     ),
-                    prefill_fixed_levels=DefaultValue((180.0, 170.0)),
+                    prefill_fixed_levels=DefaultValue((32.0, 30.0)),
                 ),
                 required=False,
             ),

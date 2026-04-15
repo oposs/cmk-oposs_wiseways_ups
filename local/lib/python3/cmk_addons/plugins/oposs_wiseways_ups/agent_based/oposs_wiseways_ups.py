@@ -21,12 +21,12 @@ from cmk.agent_based.v2 import (
 
 # Scaling/conversion functions
 def parse_enterprise_string(value: str) -> float:
-    """Parse enterprise OID string format values like '231.9'"""
+    """Parse enterprise OID string format values like '231.9', handling comma decimal separators"""
     if not value:
         return float('NaN')
     try:
-        return float(value)
-    except (ValueError, TypeError):
+        return float(value.replace(",", "."))
+    except (ValueError, TypeError, AttributeError):
         return float('NaN')
 
 def minutes_to_seconds(value: str) -> float:
@@ -44,11 +44,20 @@ def identity_str(value: str) -> str:
     return value or "Unknown"
 
 def identity_float(value: str) -> float:
-    """Convert to float directly"""
+    """Convert to float directly, handling comma decimal separators"""
     if not value:
         return float('NaN')
     try:
-        return float(value)
+        return float(value.replace(",", "."))
+    except (ValueError, TypeError, AttributeError):
+        return float('NaN')
+
+def parse_tenths(value: str) -> float:
+    """Parse integer value representing tenths (e.g. 243 -> 24.3)"""
+    if not value:
+        return float('NaN')
+    try:
+        return float(value) / 10.0
     except (ValueError, TypeError):
         return float('NaN')
 
@@ -254,9 +263,9 @@ OID_DEFINITIONS: List[OIDDefinition] = [
 
     # Environmental sensor data (THS One)
     OIDDefinition("env_temperature", "4.1.44782.1.2.1.1.1.0", "thsOneTempData",
-                  "env_temperature", converter=identity_float),
+                  "env_temperature", converter=parse_tenths),
     OIDDefinition("env_humidity", "4.1.44782.1.2.1.1.2.0", "thsOneHumiData",
-                  "env_humidity", converter=identity_float),
+                  "env_humidity", converter=parse_tenths),
 ]
 
 
@@ -282,7 +291,7 @@ def parse_oposs_wiseways_ups(string_table):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
                             parsed[oid_def.output_key] = "Unknown"
-                        elif oid_def.converter in [identity_float, parse_enterprise_string]:
+                        elif oid_def.converter in [identity_float, parse_enterprise_string, parse_tenths]:
                             parsed[oid_def.output_key] = 0.0
                         elif oid_def.converter == identity_int:
                             parsed[oid_def.output_key] = 0
@@ -296,7 +305,7 @@ def parse_oposs_wiseways_ups(string_table):
                     parsed[oid_def.output_key] = "unknown"
                 elif oid_def.converter == identity_str:
                     parsed[oid_def.output_key] = "Unknown"
-                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds]:
+                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds, parse_tenths]:
                     parsed[oid_def.output_key] = 0.0
                 elif oid_def.converter == identity_int:
                     parsed[oid_def.output_key] = 0
@@ -480,11 +489,11 @@ def check_oposs_wiseways_ups_battery_voltage(
     
     # Use device config threshold as default if available
     device_lower = section.get("battery_volt_low_config", 0)
-    
+
     if device_lower > 0:
-        default_levels_lower = ("fixed", (device_lower, device_lower - 10))
+        default_levels_lower = ("fixed", (device_lower, device_lower - 2))
     else:
-        default_levels_lower = ("fixed", (180.0, 170.0))
+        default_levels_lower = ("fixed", (32.0, 30.0))
     
     yield from check_levels(
         voltage,
@@ -504,7 +513,7 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
     check_function=check_oposs_wiseways_ups_battery_voltage,
     check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
-        "battery_voltage_lower": ("fixed", (180.0, 170.0)),
+        "battery_voltage_lower": ("fixed", (32.0, 30.0)),
     },
 )
 
