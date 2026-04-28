@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
-- Battery and environment temperature graphs now also render as filled
-  areas
 
 ### Fixed
+
+## 0.4.3 - 2026-04-28
+### Changed
+- Battery and environment temperature graphs now also render as filled
+  areas
 
 ## 0.4.2 - 2026-04-28
 ### Changed
