@@ -10,11 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+
+### Fixed
+
+## 0.4.2 - 2026-04-28
+### Changed
 - Single-metric graphs with a meaningful zero baseline (battery charge,
   battery voltage, output load, output power, environment humidity, alarm
   counters) now render as filled areas instead of lines
-
-### Fixed
 
 ## 0.4.1 - 2026-04-15
 ## 0.4.0 - 2025-12-11
