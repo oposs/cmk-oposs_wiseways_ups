@@ -278,7 +278,7 @@ graph_ups_currents = Graph(
 graph_ups_temperature = Graph(
     name="ups_temperature",
     title=Title("UPS Battery Temperature"),
-    simple_lines=[
+    compound_lines=[
         "temperature",
     ],
     minimal_range=MinimalRange(
@@ -291,7 +291,7 @@ graph_ups_temperature = Graph(
 graph_ups_env_temperature = Graph(
     name="ups_env_temperature",
     title=Title("UPS Environment Temperature"),
-    simple_lines=[
+    compound_lines=[
         "env_temperature",
     ],
     minimal_range=MinimalRange(
