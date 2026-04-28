@@ -159,7 +159,7 @@ metric_time_on_battery = Metric(
 graph_ups_battery_charge = Graph(
     name="ups_battery_charge",
     title=Title("UPS Battery Charge"),
-    simple_lines=[
+    compound_lines=[
         "battery_charge",
     ],
     minimal_range=MinimalRange(
@@ -216,7 +216,7 @@ graph_ups_voltages_ac = Graph(
 graph_ups_battery_voltage = Graph(
     name="ups_battery_voltage",
     title=Title("UPS Battery Voltage"),
-    simple_lines=[
+    compound_lines=[
         "battery_voltage",
     ],
     minimal_range=MinimalRange(
@@ -245,7 +245,7 @@ graph_ups_frequencies = Graph(
 graph_ups_output_load = Graph(
     name="ups_output_load",
     title=Title("UPS Output Load"),
-    simple_lines=[
+    compound_lines=[
         "output_load",
     ],
     minimal_range=MinimalRange(
@@ -258,7 +258,7 @@ graph_ups_output_load = Graph(
 graph_ups_output_power = Graph(
     name="ups_output_power",
     title=Title("UPS Output Power"),
-    simple_lines=[
+    compound_lines=[
         "output_power",
     ],
 )
@@ -304,7 +304,7 @@ graph_ups_env_temperature = Graph(
 graph_ups_env_humidity = Graph(
     name="ups_env_humidity",
     title=Title("UPS Environment Humidity"),
-    simple_lines=[
+    compound_lines=[
         "env_humidity",
     ],
     minimal_range=MinimalRange(
@@ -317,7 +317,7 @@ graph_ups_env_humidity = Graph(
 graph_ups_alarms = Graph(
     name="ups_alarms",
     title=Title("UPS Alarm Counters"),
-    simple_lines=[
+    compound_lines=[
         "input_line_bads",
     ],
 )
