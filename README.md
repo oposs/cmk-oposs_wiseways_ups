@@ -96,4 +96,4 @@ cmk -vvI --detect-plugins=oposs_wiseways_ups <hostname>
 
 ## License
 
-This plugin is provided as-is for monitoring Wiseways UPS devices in CheckMK environments.
+GNU General Public License v2 - OETIKER+PARTNER AG. See [LICENSE](LICENSE).
