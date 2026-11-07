@@ -658,16 +658,29 @@ def test_base_output_status_follows_xppc_mib(check, raw, name):
     assert f"Base output status: {name}" in _text(out)
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: the 'no value' marker -99998 is shown "
-                   "as a reading (e.g. 'Discharging: 99998.0A')")
-@pytest.mark.parametrize("service, name", [
-    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent"),
-    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
-])
-def test_no_value_marker_is_not_a_reading(check, service, name):
+MEASUREMENTS = [
+    # service, OID name, label in the summary
+    ("UPS Input Voltage", "ups1inputUPhaseVoltage", "Input voltage"),
+    ("UPS Output Voltage", "ups1outputUPhaseVoltage", "Output voltage"),
+    ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "Bypass voltage"),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "Battery voltage"),
+    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent", "Battery current"),
+    ("UPS Output Current", "ups1outputUPhaseCurrent", "Output current"),
+    ("UPS Battery Temperature", "ups1batteryTemperature", "Temperature"),
+    ("UPS Input Frequency", "ups1inputUPhaseFrequency", "Input frequency"),
+    ("UPS Output Frequency", "ups1outputFrequency", "Output frequency"),
+    ("UPS Bypass Frequency", "ups1bypassFrequency", "Bypass frequency"),
+    ("UPS Output Power", "ups1outputUPhaseActivePower", "Output power"),
+    ("UPS Output Load", "ups1outputUPhaseLoadRate", "Output load"),
+]
+
+
+@pytest.mark.parametrize("service, name, label", MEASUREMENTS)
+def test_no_value_marker_is_not_a_reading(check, service, name, label):
+    """-99998 is the card's 'no value': UNKNOWN like Battery Charge and
+    Battery Runtime, no metric."""
     _, out = _run(check, service, **{name: "-99998"})
-    assert "99998" not in _text(out)
-    assert all(abs(v) != 99998 for v in _metrics(out).values())
+    assert out == [Result(state=State.UNKNOWN, summary=f"{label} data not available")]
 
 
 @pytest.mark.xfail(strict=True, raises=ValueError, reason="BUG: a non-numeric battery "

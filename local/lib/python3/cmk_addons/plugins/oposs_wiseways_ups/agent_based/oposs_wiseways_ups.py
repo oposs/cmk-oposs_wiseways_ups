@@ -75,6 +75,17 @@ def identity_int(value: str) -> int:
         return 0
 
 
+# The card sends this in place of a reading it does not have
+NO_VALUE = -99998.0
+
+
+def _no_value(section: dict[str, Any], key: str, label: str) -> Result | None:
+    """UNKNOWN when the UPS sent its 'no value' marker for key"""
+    if section.get(key) == NO_VALUE:
+        return Result(state=State.UNKNOWN, summary=f"{label} data not available")
+    return None
+
+
 # Value mappers
 BATTERY_STATUS_MAP = {
     "1": "unknown",
@@ -351,6 +362,10 @@ def check_oposs_wiseways_ups_input_voltage(
         return
     
     voltage = section.get("input_voltage", 0)
+    unusable = _no_value(section, "input_voltage", "Input voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config thresholds as defaults if available
     device_upper = section.get("input_volt_up_config", 0)
@@ -401,6 +416,10 @@ def check_oposs_wiseways_ups_output_voltage(
         return
     
     voltage = section.get("output_voltage", 0)
+    unusable = _no_value(section, "output_voltage", "Output voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config thresholds as defaults if available
     device_upper = section.get("output_volt_up_config", 0)
@@ -451,6 +470,10 @@ def check_oposs_wiseways_ups_bypass_voltage(
         return
     
     voltage = section.get("bypass_voltage", 0)
+    unusable = _no_value(section, "bypass_voltage", "Bypass voltage")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         voltage,
@@ -490,6 +513,10 @@ def check_oposs_wiseways_ups_battery_voltage(
         return
     
     voltage = section.get("battery_voltage", 0)
+    unusable = _no_value(section, "battery_voltage", "Battery voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_lower = section.get("battery_volt_low_config", 0)
@@ -537,6 +564,10 @@ def check_oposs_wiseways_ups_battery_current(
         return
     
     current = section.get("battery_current", 0)
+    unusable = _no_value(section, "battery_current", "Battery current")
+    if unusable:
+        yield unusable
+        return
     if current == 0:
         yield Result(state=State.OK, summary="No current flow")
         yield Metric("battery_current", 0)
@@ -571,6 +602,10 @@ def check_oposs_wiseways_ups_output_current(
         return
     
     current = section.get("output_current", 0)
+    unusable = _no_value(section, "output_current", "Output current")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         current,
@@ -606,6 +641,10 @@ def check_oposs_wiseways_ups_temperature(
         return
     
     temperature = section.get("battery_temperature", 0)
+    unusable = _no_value(section, "battery_temperature", "Temperature")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_upper = section.get("temp_up_config", 0)
@@ -653,6 +692,10 @@ def check_oposs_wiseways_ups_input_frequency(
         return
     
     frequency = section.get("input_frequency", 0)
+    unusable = _no_value(section, "input_frequency", "Input frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -692,6 +735,10 @@ def check_oposs_wiseways_ups_output_frequency(
         return
     
     frequency = section.get("output_frequency", 0)
+    unusable = _no_value(section, "output_frequency", "Output frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -731,6 +778,10 @@ def check_oposs_wiseways_ups_bypass_frequency(
         return
     
     frequency = section.get("bypass_frequency", 0)
+    unusable = _no_value(section, "bypass_frequency", "Bypass frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -770,6 +821,10 @@ def check_oposs_wiseways_ups_output_power(
         return
     
     power = section.get("output_power_watts", 0)
+    unusable = _no_value(section, "output_power_watts", "Output power")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         power,
@@ -805,6 +860,10 @@ def check_oposs_wiseways_ups_output_load(
         return
     
     load = section.get("output_load_percent", 0)
+    unusable = _no_value(section, "output_load_percent", "Output load")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_upper = section.get("output_load_up_config", 0)

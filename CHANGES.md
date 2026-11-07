@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previously carried no LICENSE file at all.
 
 ### Fixed
+- When the UPS has no reading, it sends -99998, and the measurement
+  services showed that as a value: "UPS Battery Current" said
+  "Discharging: 99998.0A" and "UPS Input Voltage" went CRIT on
+  -99998.0V. These services now go UNKNOWN with "... data not
+  available", as "UPS Battery Charge" and "UPS Battery Runtime" already
+  did; this covers the voltage, current, frequency, battery temperature,
+  output power and output load services.
 
 ## 0.4.3 - 2026-04-28
 ### Changed
