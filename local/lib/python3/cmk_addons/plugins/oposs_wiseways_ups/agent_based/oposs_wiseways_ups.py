@@ -18,6 +18,10 @@ from cmk.agent_based.v2 import (
     render,
 )
 
+# Create release PR writes the released version here (version_files in
+# .github/repo-infra.json)
+__version__ = "0.4.3"
+
 
 # Scaling/conversion functions
 def parse_enterprise_string(value: str) -> float:
