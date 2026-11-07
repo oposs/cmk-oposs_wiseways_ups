@@ -1,21 +1,19 @@
-#!/usr/bin/env python3
-
-from cmk.rulesets.v1 import Title, Help
+from cmk.rulesets.v1 import Help, Title
 from cmk.rulesets.v1.form_specs import (
-    Dictionary,
-    DictElement,
-    SimpleLevels,
-    LevelDirection,
     DefaultValue,
+    DictElement,
+    Dictionary,
     Float,
-    TimeSpan,
+    LevelDirection,
+    SimpleLevels,
     TimeMagnitude,
+    TimeSpan,
     validators,
 )
 from cmk.rulesets.v1.rule_specs import (
     CheckParameters,
-    Topic,
     HostCondition,
+    Topic,
 )
 
 

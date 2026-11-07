@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
-
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
+
 from cmk.agent_based.v2 import (
     CheckPlugin,
     CheckResult,
@@ -10,13 +10,17 @@ from cmk.agent_based.v2 import (
     Result,
     Service,
     SimpleSNMPSection,
-    SNMPTree,
     SNMPDetectSpecification,
+    SNMPTree,
     State,
     check_levels,
     contains,
     render,
 )
+
+# Create release PR writes the released version here (version_files in
+# .github/repo-infra.json)
+__version__ = "0.4.3"
 
 
 # Scaling/conversion functions
@@ -123,12 +127,12 @@ class OIDDefinition:
     oid: str                # OID suffix
     description: str        # Human-readable description
     output_key: str         # Key name in final parsed output
-    converter: Optional[Callable] = None  # Conversion function
-    mapper: Optional[Dict] = None         # Value mapping dict
+    converter: Callable | None = None  # Conversion function
+    mapper: dict | None = None         # Value mapping dict
 
 
 # OID definitions with all metadata - order matters!
-OID_DEFINITIONS: List[OIDDefinition] = [
+OID_DEFINITIONS: list[OIDDefinition] = [
     # Identity information - System Info service
     OIDDefinition("model", "2.1.33.1.1.2.0", "upsIdentModel",
                   "model", converter=identity_str),
@@ -334,13 +338,13 @@ snmp_section_oposs_wiseways_ups = SimpleSNMPSection(
 # ============================================================================
 
 # Check plugin for UPS Input Voltage
-def discover_oposs_wiseways_ups_input_voltage(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_input_voltage(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("input_voltage", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_input_voltage(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -384,13 +388,13 @@ check_plugin_oposs_wiseways_ups_input_voltage = CheckPlugin(
 
 
 # Check plugin for UPS Output Voltage
-def discover_oposs_wiseways_ups_output_voltage(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_output_voltage(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("output_voltage", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_output_voltage(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -434,13 +438,13 @@ check_plugin_oposs_wiseways_ups_output_voltage = CheckPlugin(
 
 
 # Check plugin for UPS Bypass Voltage
-def discover_oposs_wiseways_ups_bypass_voltage(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_bypass_voltage(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("bypass_voltage", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_bypass_voltage(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -473,13 +477,13 @@ check_plugin_oposs_wiseways_ups_bypass_voltage = CheckPlugin(
 
 
 # Check plugin for UPS Battery Voltage
-def discover_oposs_wiseways_ups_battery_voltage(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery_voltage(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("battery_voltage", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_battery_voltage(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -519,14 +523,14 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
 
 
 # Check plugin for UPS Battery Current
-def discover_oposs_wiseways_ups_battery_current(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery_current(section: dict[str, Any]) -> DiscoveryResult:
     current = section.get("battery_current", 0)
     if section and current != 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_battery_current(
-    section: Dict[str, Any]
+    section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -554,13 +558,13 @@ check_plugin_oposs_wiseways_ups_battery_current = CheckPlugin(
 
 
 # Check plugin for UPS Output Current
-def discover_oposs_wiseways_ups_output_current(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_output_current(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("output_current", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_output_current(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -589,13 +593,13 @@ check_plugin_oposs_wiseways_ups_output_current = CheckPlugin(
 
 
 # Check plugin for UPS Temperature
-def discover_oposs_wiseways_ups_temperature(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_temperature(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("battery_temperature", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_temperature(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -636,13 +640,13 @@ check_plugin_oposs_wiseways_ups_temperature = CheckPlugin(
 
 
 # Check plugin for UPS Input Frequency
-def discover_oposs_wiseways_ups_input_frequency(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_input_frequency(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("input_frequency", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_input_frequency(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -675,13 +679,13 @@ check_plugin_oposs_wiseways_ups_input_frequency = CheckPlugin(
 
 
 # Check plugin for UPS Output Frequency
-def discover_oposs_wiseways_ups_output_frequency(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_output_frequency(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("output_frequency", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_output_frequency(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -714,13 +718,13 @@ check_plugin_oposs_wiseways_ups_output_frequency = CheckPlugin(
 
 
 # Check plugin for UPS Bypass Frequency
-def discover_oposs_wiseways_ups_bypass_frequency(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_bypass_frequency(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("bypass_frequency", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_bypass_frequency(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -753,13 +757,13 @@ check_plugin_oposs_wiseways_ups_bypass_frequency = CheckPlugin(
 
 
 # Check plugin for UPS Output Power
-def discover_oposs_wiseways_ups_output_power(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_output_power(section: dict[str, Any]) -> DiscoveryResult:
     if section and section.get("output_power_watts", 0) > 0:
         yield Service()
 
 
 def check_oposs_wiseways_ups_output_power(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -788,13 +792,13 @@ check_plugin_oposs_wiseways_ups_output_power = CheckPlugin(
 
 
 # Check plugin for UPS Output Load
-def discover_oposs_wiseways_ups_output_load(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_output_load(section: dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
 def check_oposs_wiseways_ups_output_load(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -838,13 +842,13 @@ check_plugin_oposs_wiseways_ups_output_load = CheckPlugin(
 # ============================================================================
 
 # Check plugin for UPS Battery Charge (individual service)
-def discover_oposs_wiseways_ups_battery_charge(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery_charge(section: dict[str, Any]) -> DiscoveryResult:
     if section and "battery_charge_percent" in section:
         yield Service()
 
 
 def check_oposs_wiseways_ups_battery_charge(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -879,13 +883,13 @@ check_plugin_oposs_wiseways_ups_battery_charge = CheckPlugin(
 
 
 # Check plugin for UPS Battery Runtime (individual service)
-def discover_oposs_wiseways_ups_battery_runtime(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery_runtime(section: dict[str, Any]) -> DiscoveryResult:
     if section and "battery_runtime_seconds" in section:
         yield Service()
 
 
 def check_oposs_wiseways_ups_battery_runtime(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -923,12 +927,12 @@ check_plugin_oposs_wiseways_ups_battery_runtime = CheckPlugin(
 # ============================================================================
 
 # Check plugin for UPS Battery Status (status and alarms only)
-def discover_oposs_wiseways_ups_battery_status(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_battery_status(section: dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_oposs_wiseways_ups_battery_status(section: Dict[str, Any]) -> CheckResult:
+def check_oposs_wiseways_ups_battery_status(section: dict[str, Any]) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
         return
@@ -975,13 +979,13 @@ check_plugin_oposs_wiseways_ups_battery_status = CheckPlugin(
 
 
 # Check plugin for UPS Power Status
-def discover_oposs_wiseways_ups_power_status(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_power_status(section: dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
 def check_oposs_wiseways_ups_power_status(
-    section: Dict[str, Any]
+    section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -1041,13 +1045,13 @@ check_plugin_oposs_wiseways_ups_power_status = CheckPlugin(
 
 
 # Check plugin for UPS Alarm Status
-def discover_oposs_wiseways_ups_alarm_status(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_alarm_status(section: dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
 def check_oposs_wiseways_ups_alarm_status(
-    section: Dict[str, Any]
+    section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
@@ -1112,12 +1116,12 @@ check_plugin_oposs_wiseways_ups_alarm_status = CheckPlugin(
 
 
 # Check plugin for UPS System Info (static/inventory)
-def discover_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_system_info(section: dict[str, Any]) -> DiscoveryResult:
     if section:
         yield Service()
 
 
-def check_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> CheckResult:
+def check_oposs_wiseways_ups_system_info(section: dict[str, Any]) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
         return
@@ -1189,7 +1193,7 @@ def check_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> CheckResult
                 yield Result(state=State.WARN, summary=f"Maintenance expired: {maintenance_exp}")
             else:
                 yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
-        except:
+        except ValueError:
             yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
     
     if battery_install != "Unknown":
@@ -1203,7 +1207,7 @@ def check_oposs_wiseways_ups_system_info(section: Dict[str, Any]) -> CheckResult
                 yield Result(state=State.WARN, summary=f"Battery maintenance due: {battery_next_maint}")
             else:
                 yield Result(state=State.OK, notice=f"Battery next maintenance: {battery_next_maint}")
-        except:
+        except ValueError:
             yield Result(state=State.OK, notice=f"Battery next maintenance: {battery_next_maint}")
 
 
@@ -1217,7 +1221,7 @@ check_plugin_oposs_wiseways_ups_system_info = CheckPlugin(
 
 
 # Check plugin for UPS Environment (THS sensor)
-def discover_oposs_wiseways_ups_environment(section: Dict[str, Any]) -> DiscoveryResult:
+def discover_oposs_wiseways_ups_environment(section: dict[str, Any]) -> DiscoveryResult:
     # Discover only if environmental sensor data is present
     env_temp = section.get("env_temperature", 0)
     env_humi = section.get("env_humidity", 0)
@@ -1226,7 +1230,7 @@ def discover_oposs_wiseways_ups_environment(section: Dict[str, Any]) -> Discover
 
 
 def check_oposs_wiseways_ups_environment(
-    params: Mapping[str, Any], section: Dict[str, Any]
+    params: Mapping[str, Any], section: dict[str, Any]
 ) -> CheckResult:
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data")
