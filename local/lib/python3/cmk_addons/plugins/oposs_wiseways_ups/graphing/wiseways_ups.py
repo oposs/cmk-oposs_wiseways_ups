@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-
 from cmk.graphing.v1 import Title
+from cmk.graphing.v1.graphs import Graph, MinimalRange
 from cmk.graphing.v1.metrics import (
     Color,
     DecimalNotation,
@@ -8,8 +7,7 @@ from cmk.graphing.v1.metrics import (
     TimeNotation,
     Unit,
 )
-from cmk.graphing.v1.graphs import Graph, MinimalRange
-from cmk.graphing.v1.perfometers import Perfometer, FocusRange, Closed
+from cmk.graphing.v1.perfometers import Closed, FocusRange, Perfometer
 
 # Define units
 unit_percentage = Unit(DecimalNotation("%"))
