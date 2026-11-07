@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -84,6 +85,14 @@ def _no_value(section: dict[str, Any], key: str, label: str) -> Result | None:
     if section.get(key) == NO_VALUE:
         return Result(state=State.UNKNOWN, summary=f"{label} data not available")
     return None
+
+
+def _unreadable(section: dict[str, Any], key: str, label: str) -> Result | None:
+    """UNKNOWN when the UPS sent text that is not a number for key"""
+    raw = section.get("_unreadable", {}).get(key)
+    if raw is None:
+        return None
+    return Result(state=State.UNKNOWN, summary=f"{label}: cannot read {raw!r} as a number")
 
 
 # Value mappers
@@ -302,6 +311,11 @@ def parse_oposs_wiseways_ups(string_table):
                 elif oid_def.converter:
                     try:
                         parsed[oid_def.output_key] = oid_def.converter(value)
+                        # The converters give NaN for text that is not a number;
+                        # keep that text so the check can say what came.
+                        converted = parsed[oid_def.output_key]
+                        if isinstance(converted, float) and math.isnan(converted):
+                            parsed.setdefault("_unreadable", {})[oid_def.output_key] = value
                     except (ValueError, TypeError):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
@@ -955,6 +969,10 @@ def check_oposs_wiseways_ups_battery_runtime(
         return
     
     runtime = section.get("battery_runtime_seconds", 0)
+    unusable = _unreadable(section, "battery_runtime_seconds", "Battery runtime")
+    if unusable:
+        yield unusable
+        return
     if runtime <= 0:
         yield Result(state=State.UNKNOWN, summary="Runtime data not available")
         yield Metric("battery_runtime", float('nan'))

@@ -683,11 +683,16 @@ def test_no_value_marker_is_not_a_reading(check, service, name, label):
     assert out == [Result(state=State.UNKNOWN, summary=f"{label} data not available")]
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError, reason="BUG: a non-numeric battery "
-                   "time remaining crashes UPS Battery Runtime (cannot convert float NaN)")
 def test_non_numeric_runtime_does_not_crash(check):
     _, out = _run(check, "UPS Battery Runtime", ups1batteryTimeRemaining="N/A")
-    assert _worst(out) == State.UNKNOWN
+    assert out == [Result(state=State.UNKNOWN,
+                          summary="Battery runtime: cannot read 'N/A' as a number")]
+
+
+def test_parse_keeps_the_text_it_could_not_read(check):
+    section = _parse(check, ups1batteryTimeRemaining="N/A", ups1inputUPhaseVoltage="231.9")
+    assert section["_unreadable"] == {"battery_runtime_seconds": "N/A"}
+    assert "_unreadable" not in _parse(check)
 
 
 @pytest.mark.xfail(strict=True, reason="BUG: a non-numeric value is reported OK "

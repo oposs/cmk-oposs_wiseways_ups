@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   available", as "UPS Battery Charge" and "UPS Battery Runtime" already
   did; this covers the voltage, current, frequency, battery temperature,
   output power and output load services.
+- "UPS Battery Runtime" crashed when the UPS sent text such as "N/A"
+  instead of a number for the battery time remaining. The service now
+  goes UNKNOWN with "Battery runtime: cannot read 'N/A' as a number".
 
 ## 0.4.3 - 2026-04-28
 ### Changed
