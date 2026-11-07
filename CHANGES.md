@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "UPS Battery Runtime" crashed when the UPS sent text such as "N/A"
   instead of a number for the battery time remaining. The service now
   goes UNKNOWN with "Battery runtime: cannot read 'N/A' as a number".
+- When the UPS sent text such as "N/A" instead of a number, the
+  measurement services showed OK with "nan" (for example "Input voltage:
+  nanV") and "UPS Environment" showed no result at all. They now go
+  UNKNOWN and quote the text, for example "Input voltage: cannot read
+  'N/A' as a number"; this covers "UPS Battery Charge", "UPS Battery
+  Current", the voltage, frequency, temperature, output and environment
+  services.
 
 ## 0.4.3 - 2026-04-28
 ### Changed

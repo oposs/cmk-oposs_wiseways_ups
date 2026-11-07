@@ -376,6 +376,10 @@ def check_oposs_wiseways_ups_input_voltage(
         return
     
     voltage = section.get("input_voltage", 0)
+    unusable = _unreadable(section, "input_voltage", "Input voltage")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "input_voltage", "Input voltage")
     if unusable:
         yield unusable
@@ -430,6 +434,10 @@ def check_oposs_wiseways_ups_output_voltage(
         return
     
     voltage = section.get("output_voltage", 0)
+    unusable = _unreadable(section, "output_voltage", "Output voltage")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "output_voltage", "Output voltage")
     if unusable:
         yield unusable
@@ -484,6 +492,10 @@ def check_oposs_wiseways_ups_bypass_voltage(
         return
     
     voltage = section.get("bypass_voltage", 0)
+    unusable = _unreadable(section, "bypass_voltage", "Bypass voltage")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "bypass_voltage", "Bypass voltage")
     if unusable:
         yield unusable
@@ -527,6 +539,10 @@ def check_oposs_wiseways_ups_battery_voltage(
         return
     
     voltage = section.get("battery_voltage", 0)
+    unusable = _unreadable(section, "battery_voltage", "Battery voltage")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "battery_voltage", "Battery voltage")
     if unusable:
         yield unusable
@@ -578,6 +594,10 @@ def check_oposs_wiseways_ups_battery_current(
         return
     
     current = section.get("battery_current", 0)
+    unusable = _unreadable(section, "battery_current", "Battery current")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "battery_current", "Battery current")
     if unusable:
         yield unusable
@@ -616,6 +636,10 @@ def check_oposs_wiseways_ups_output_current(
         return
     
     current = section.get("output_current", 0)
+    unusable = _unreadable(section, "output_current", "Output current")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "output_current", "Output current")
     if unusable:
         yield unusable
@@ -655,6 +679,10 @@ def check_oposs_wiseways_ups_temperature(
         return
     
     temperature = section.get("battery_temperature", 0)
+    unusable = _unreadable(section, "battery_temperature", "Temperature")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "battery_temperature", "Temperature")
     if unusable:
         yield unusable
@@ -706,6 +734,10 @@ def check_oposs_wiseways_ups_input_frequency(
         return
     
     frequency = section.get("input_frequency", 0)
+    unusable = _unreadable(section, "input_frequency", "Input frequency")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "input_frequency", "Input frequency")
     if unusable:
         yield unusable
@@ -749,6 +781,10 @@ def check_oposs_wiseways_ups_output_frequency(
         return
     
     frequency = section.get("output_frequency", 0)
+    unusable = _unreadable(section, "output_frequency", "Output frequency")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "output_frequency", "Output frequency")
     if unusable:
         yield unusable
@@ -792,6 +828,10 @@ def check_oposs_wiseways_ups_bypass_frequency(
         return
     
     frequency = section.get("bypass_frequency", 0)
+    unusable = _unreadable(section, "bypass_frequency", "Bypass frequency")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "bypass_frequency", "Bypass frequency")
     if unusable:
         yield unusable
@@ -835,6 +875,10 @@ def check_oposs_wiseways_ups_output_power(
         return
     
     power = section.get("output_power_watts", 0)
+    unusable = _unreadable(section, "output_power_watts", "Output power")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "output_power_watts", "Output power")
     if unusable:
         yield unusable
@@ -874,6 +918,10 @@ def check_oposs_wiseways_ups_output_load(
         return
     
     load = section.get("output_load_percent", 0)
+    unusable = _unreadable(section, "output_load_percent", "Output load")
+    if unusable:
+        yield unusable
+        return
     unusable = _no_value(section, "output_load_percent", "Output load")
     if unusable:
         yield unusable
@@ -928,6 +976,10 @@ def check_oposs_wiseways_ups_battery_charge(
         return
     
     charge_percent = section.get("battery_charge_percent", 0)
+    unusable = _unreadable(section, "battery_charge_percent", "Battery charge")
+    if unusable:
+        yield unusable
+        return
     if charge_percent <= 0:
         yield Result(state=State.UNKNOWN, summary="Charge data not available")
         yield Metric("battery_charge", float('nan'))
@@ -1322,7 +1374,10 @@ def check_oposs_wiseways_ups_environment(
         return
 
     # Temperature check
-    if env_temp > 0:
+    unreadable_temp = _unreadable(section, "env_temperature", "Temperature")
+    if unreadable_temp:
+        yield unreadable_temp
+    elif env_temp > 0:
         yield from check_levels(
             env_temp,
             levels_upper=params.get("env_temp_upper", ("fixed", (35.0, 40.0))),
@@ -1333,7 +1388,10 @@ def check_oposs_wiseways_ups_environment(
         )
 
     # Humidity check
-    if env_humi > 0:
+    unreadable_humi = _unreadable(section, "env_humidity", "Humidity")
+    if unreadable_humi:
+        yield unreadable_humi
+    elif env_humi > 0:
         yield from check_levels(
             env_humi,
             levels_upper=params.get("env_humidity_upper", ("fixed", (70.0, 80.0))),

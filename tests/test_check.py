@@ -695,16 +695,27 @@ def test_parse_keeps_the_text_it_could_not_read(check):
     assert "_unreadable" not in _parse(check)
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: a non-numeric value is reported OK "
-                   "as 'nan' instead of UNKNOWN")
-@pytest.mark.parametrize("service, name", [
-    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
-    ("UPS Battery Charge", "ups1remainingCapacityOfBattery"),
-    ("UPS Battery Temperature", "ups1batteryTemperature"),
+@pytest.mark.parametrize("service, name, label", [
+    *MEASUREMENTS,
+    ("UPS Battery Charge", "ups1remainingCapacityOfBattery", "Battery charge"),
 ])
-def test_non_numeric_value_is_unknown(check, service, name):
-    _, out = _run(check, service, **{name: "N/A"})
+@pytest.mark.parametrize("raw", ["N/A", "abc"])
+def test_non_numeric_value_is_unknown(check, service, name, label, raw):
+    _, out = _run(check, service, **{name: raw})
+    assert out == [Result(state=State.UNKNOWN,
+                          summary=f"{label}: cannot read {raw!r} as a number")]
+
+
+def test_non_numeric_environment_values_are_unknown(check):
+    _, out = _run(check, "UPS Environment", thsOneTempData="N/A", thsOneHumiData="456")
+    assert _results(out) == [
+        Result(state=State.UNKNOWN, summary="Temperature: cannot read 'N/A' as a number"),
+        Result(state=State.OK, summary="Humidity: 46%"),
+    ]
+    assert _metrics(out) == pytest.approx({"env_humidity": 45.6})
+    _, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="--")
     assert _worst(out) == State.UNKNOWN
+    assert "Humidity: cannot read '--' as a number" in _text(out)
 
 
 # --- version ----------------------------------------------------------------
