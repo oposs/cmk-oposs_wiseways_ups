@@ -634,3 +634,55 @@ def test_environment_sensor_gone_after_discovery(check):
     out = list(plugin.check_function(plugin.check_default_parameters, section))
     assert out == [Result(state=State.UNKNOWN, summary="No environmental sensor data")]
 
+
+# --- bugs the tests found (xfail strict, owner decides) ----------------------
+
+@pytest.mark.xfail(strict=True, reason="BUG: the device's own voltage thresholds "
+                   "(inputVoltUpConfig etc.) never apply, the default parameters always win")
+def test_device_thresholds_are_the_default_levels(check):
+    """README: 'Dynamic thresholds from device configuration when available'.
+    Checkmk always passes the plugin's default parameters, so params.get()
+    never falls back to the device values."""
+    _, out = _run(check, "UPS Input Voltage", ups1inputUPhaseVoltage="245",
+                  inputVoltUpConfig="242", inputVoltLowConfig="187")
+    assert _worst(out) == State.WARN
+
+
+@pytest.mark.xfail(strict=True, reason="BUG: upsBaseOutputStatus is read with the APC "
+                   "enumeration, XPPC-MIB defines 9 = onBuck, 8 = standBy, 7 = rebooting")
+@pytest.mark.parametrize("raw, name", [("9", "onBuck"), ("8", "standBy"), ("7", "rebooting"),
+                                       ("6", "onBypass"), ("5", "sleeping"), ("4", "onBoost")])
+def test_base_output_status_follows_xppc_mib(check, raw, name):
+    _, out = _run(check, "UPS Power Status", upsBaseOutputStatus=raw)
+    assert f"Base output status: {name}" in _text(out)
+
+
+@pytest.mark.xfail(strict=True, reason="BUG: the 'no value' marker -99998 is shown "
+                   "as a reading (e.g. 'Discharging: 99998.0A')")
+@pytest.mark.parametrize("service, name", [
+    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent"),
+    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
+])
+def test_no_value_marker_is_not_a_reading(check, service, name):
+    _, out = _run(check, service, **{name: "-99998"})
+    assert "99998" not in _text(out)
+    assert all(abs(v) != 99998 for v in _metrics(out).values())
+
+
+@pytest.mark.xfail(strict=True, raises=ValueError, reason="BUG: a non-numeric battery "
+                   "time remaining crashes UPS Battery Runtime (cannot convert float NaN)")
+def test_non_numeric_runtime_does_not_crash(check):
+    _, out = _run(check, "UPS Battery Runtime", ups1batteryTimeRemaining="N/A")
+    assert _worst(out) == State.UNKNOWN
+
+
+@pytest.mark.xfail(strict=True, reason="BUG: a non-numeric value is reported OK "
+                   "as 'nan' instead of UNKNOWN")
+@pytest.mark.parametrize("service, name", [
+    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
+    ("UPS Battery Charge", "ups1remainingCapacityOfBattery"),
+    ("UPS Battery Temperature", "ups1batteryTemperature"),
+])
+def test_non_numeric_value_is_unknown(check, service, name):
+    _, out = _run(check, service, **{name: "N/A"})
+    assert _worst(out) == State.UNKNOWN

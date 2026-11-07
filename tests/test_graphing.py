@@ -114,3 +114,13 @@ def test_every_graph_is_listed(graphing_objects):
     names = {o.name for o in graphing_objects if isinstance(o, graphs.Graph)}
     assert names == {*DRAWABLE, "ups_voltages_all", "ups_voltages_ac", "ups_frequencies"}
 
+
+@pytest.mark.xfail(strict=True, reason="BUG: the graphs UPS All Voltages, UPS AC Voltages "
+                   "and UPS Frequencies need metrics of several services and never appear")
+@pytest.mark.parametrize("name", ["ups_voltages_all", "ups_voltages_ac", "ups_frequencies"])
+def test_combined_graph_is_drawn_in_one_service(graphing_objects, emitted, name):
+    """Checkmk draws a graph for one service, from that service's metrics.
+    These graphs combine input, output and battery values, which come from
+    separate services, so no service ever carries all their metrics."""
+    (graph,) = [o for o in graphing_objects if isinstance(o, graphs.Graph) and o.name == name]
+    assert _drawable(graph, emitted)
