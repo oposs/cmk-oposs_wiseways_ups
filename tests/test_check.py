@@ -658,35 +658,64 @@ def test_base_output_status_follows_xppc_mib(check, raw, name):
     assert f"Base output status: {name}" in _text(out)
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: the 'no value' marker -99998 is shown "
-                   "as a reading (e.g. 'Discharging: 99998.0A')")
-@pytest.mark.parametrize("service, name", [
-    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent"),
-    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
-])
-def test_no_value_marker_is_not_a_reading(check, service, name):
+MEASUREMENTS = [
+    # service, OID name, label in the summary
+    ("UPS Input Voltage", "ups1inputUPhaseVoltage", "Input voltage"),
+    ("UPS Output Voltage", "ups1outputUPhaseVoltage", "Output voltage"),
+    ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "Bypass voltage"),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "Battery voltage"),
+    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent", "Battery current"),
+    ("UPS Output Current", "ups1outputUPhaseCurrent", "Output current"),
+    ("UPS Battery Temperature", "ups1batteryTemperature", "Temperature"),
+    ("UPS Input Frequency", "ups1inputUPhaseFrequency", "Input frequency"),
+    ("UPS Output Frequency", "ups1outputFrequency", "Output frequency"),
+    ("UPS Bypass Frequency", "ups1bypassFrequency", "Bypass frequency"),
+    ("UPS Output Power", "ups1outputUPhaseActivePower", "Output power"),
+    ("UPS Output Load", "ups1outputUPhaseLoadRate", "Output load"),
+]
+
+
+@pytest.mark.parametrize("service, name, label", MEASUREMENTS)
+def test_no_value_marker_is_not_a_reading(check, service, name, label):
+    """-99998 is the card's 'no value': UNKNOWN like Battery Charge and
+    Battery Runtime, no metric."""
     _, out = _run(check, service, **{name: "-99998"})
-    assert "99998" not in _text(out)
-    assert all(abs(v) != 99998 for v in _metrics(out).values())
+    assert out == [Result(state=State.UNKNOWN, summary=f"{label} data not available")]
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError, reason="BUG: a non-numeric battery "
-                   "time remaining crashes UPS Battery Runtime (cannot convert float NaN)")
 def test_non_numeric_runtime_does_not_crash(check):
     _, out = _run(check, "UPS Battery Runtime", ups1batteryTimeRemaining="N/A")
-    assert _worst(out) == State.UNKNOWN
+    assert out == [Result(state=State.UNKNOWN,
+                          summary="Battery runtime: cannot read 'N/A' as a number")]
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: a non-numeric value is reported OK "
-                   "as 'nan' instead of UNKNOWN")
-@pytest.mark.parametrize("service, name", [
-    ("UPS Input Voltage", "ups1inputUPhaseVoltage"),
-    ("UPS Battery Charge", "ups1remainingCapacityOfBattery"),
-    ("UPS Battery Temperature", "ups1batteryTemperature"),
+def test_parse_keeps_the_text_it_could_not_read(check):
+    section = _parse(check, ups1batteryTimeRemaining="N/A", ups1inputUPhaseVoltage="231.9")
+    assert section["_unreadable"] == {"battery_runtime_seconds": "N/A"}
+    assert "_unreadable" not in _parse(check)
+
+
+@pytest.mark.parametrize("service, name, label", [
+    *MEASUREMENTS,
+    ("UPS Battery Charge", "ups1remainingCapacityOfBattery", "Battery charge"),
 ])
-def test_non_numeric_value_is_unknown(check, service, name):
-    _, out = _run(check, service, **{name: "N/A"})
+@pytest.mark.parametrize("raw", ["N/A", "abc"])
+def test_non_numeric_value_is_unknown(check, service, name, label, raw):
+    _, out = _run(check, service, **{name: raw})
+    assert out == [Result(state=State.UNKNOWN,
+                          summary=f"{label}: cannot read {raw!r} as a number")]
+
+
+def test_non_numeric_environment_values_are_unknown(check):
+    _, out = _run(check, "UPS Environment", thsOneTempData="N/A", thsOneHumiData="456")
+    assert _results(out) == [
+        Result(state=State.UNKNOWN, summary="Temperature: cannot read 'N/A' as a number"),
+        Result(state=State.OK, summary="Humidity: 46%"),
+    ]
+    assert _metrics(out) == pytest.approx({"env_humidity": 45.6})
+    _, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="--")
     assert _worst(out) == State.UNKNOWN
+    assert "Humidity: cannot read '--' as a number" in _text(out)
 
 
 # --- version ----------------------------------------------------------------

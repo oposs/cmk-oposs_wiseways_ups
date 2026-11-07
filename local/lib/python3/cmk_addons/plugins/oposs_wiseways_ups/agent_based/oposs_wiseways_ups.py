@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -73,6 +74,25 @@ def identity_int(value: str) -> int:
         return int(value)
     except (ValueError, TypeError):
         return 0
+
+
+# The card sends this in place of a reading it does not have
+NO_VALUE = -99998.0
+
+
+def _no_value(section: dict[str, Any], key: str, label: str) -> Result | None:
+    """UNKNOWN when the UPS sent its 'no value' marker for key"""
+    if section.get(key) == NO_VALUE:
+        return Result(state=State.UNKNOWN, summary=f"{label} data not available")
+    return None
+
+
+def _unreadable(section: dict[str, Any], key: str, label: str) -> Result | None:
+    """UNKNOWN when the UPS sent text that is not a number for key"""
+    raw = section.get("_unreadable", {}).get(key)
+    if raw is None:
+        return None
+    return Result(state=State.UNKNOWN, summary=f"{label}: cannot read {raw!r} as a number")
 
 
 # Value mappers
@@ -291,6 +311,11 @@ def parse_oposs_wiseways_ups(string_table):
                 elif oid_def.converter:
                     try:
                         parsed[oid_def.output_key] = oid_def.converter(value)
+                        # The converters give NaN for text that is not a number;
+                        # keep that text so the check can say what came.
+                        converted = parsed[oid_def.output_key]
+                        if isinstance(converted, float) and math.isnan(converted):
+                            parsed.setdefault("_unreadable", {})[oid_def.output_key] = value
                     except (ValueError, TypeError):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
@@ -351,6 +376,14 @@ def check_oposs_wiseways_ups_input_voltage(
         return
     
     voltage = section.get("input_voltage", 0)
+    unusable = _unreadable(section, "input_voltage", "Input voltage")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "input_voltage", "Input voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config thresholds as defaults if available
     device_upper = section.get("input_volt_up_config", 0)
@@ -401,6 +434,14 @@ def check_oposs_wiseways_ups_output_voltage(
         return
     
     voltage = section.get("output_voltage", 0)
+    unusable = _unreadable(section, "output_voltage", "Output voltage")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "output_voltage", "Output voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config thresholds as defaults if available
     device_upper = section.get("output_volt_up_config", 0)
@@ -451,6 +492,14 @@ def check_oposs_wiseways_ups_bypass_voltage(
         return
     
     voltage = section.get("bypass_voltage", 0)
+    unusable = _unreadable(section, "bypass_voltage", "Bypass voltage")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "bypass_voltage", "Bypass voltage")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         voltage,
@@ -490,6 +539,14 @@ def check_oposs_wiseways_ups_battery_voltage(
         return
     
     voltage = section.get("battery_voltage", 0)
+    unusable = _unreadable(section, "battery_voltage", "Battery voltage")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "battery_voltage", "Battery voltage")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_lower = section.get("battery_volt_low_config", 0)
@@ -537,6 +594,14 @@ def check_oposs_wiseways_ups_battery_current(
         return
     
     current = section.get("battery_current", 0)
+    unusable = _unreadable(section, "battery_current", "Battery current")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "battery_current", "Battery current")
+    if unusable:
+        yield unusable
+        return
     if current == 0:
         yield Result(state=State.OK, summary="No current flow")
         yield Metric("battery_current", 0)
@@ -571,6 +636,14 @@ def check_oposs_wiseways_ups_output_current(
         return
     
     current = section.get("output_current", 0)
+    unusable = _unreadable(section, "output_current", "Output current")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "output_current", "Output current")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         current,
@@ -606,6 +679,14 @@ def check_oposs_wiseways_ups_temperature(
         return
     
     temperature = section.get("battery_temperature", 0)
+    unusable = _unreadable(section, "battery_temperature", "Temperature")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "battery_temperature", "Temperature")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_upper = section.get("temp_up_config", 0)
@@ -653,6 +734,14 @@ def check_oposs_wiseways_ups_input_frequency(
         return
     
     frequency = section.get("input_frequency", 0)
+    unusable = _unreadable(section, "input_frequency", "Input frequency")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "input_frequency", "Input frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -692,6 +781,14 @@ def check_oposs_wiseways_ups_output_frequency(
         return
     
     frequency = section.get("output_frequency", 0)
+    unusable = _unreadable(section, "output_frequency", "Output frequency")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "output_frequency", "Output frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -731,6 +828,14 @@ def check_oposs_wiseways_ups_bypass_frequency(
         return
     
     frequency = section.get("bypass_frequency", 0)
+    unusable = _unreadable(section, "bypass_frequency", "Bypass frequency")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "bypass_frequency", "Bypass frequency")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         frequency,
@@ -770,6 +875,14 @@ def check_oposs_wiseways_ups_output_power(
         return
     
     power = section.get("output_power_watts", 0)
+    unusable = _unreadable(section, "output_power_watts", "Output power")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "output_power_watts", "Output power")
+    if unusable:
+        yield unusable
+        return
     
     yield from check_levels(
         power,
@@ -805,6 +918,14 @@ def check_oposs_wiseways_ups_output_load(
         return
     
     load = section.get("output_load_percent", 0)
+    unusable = _unreadable(section, "output_load_percent", "Output load")
+    if unusable:
+        yield unusable
+        return
+    unusable = _no_value(section, "output_load_percent", "Output load")
+    if unusable:
+        yield unusable
+        return
     
     # Use device config threshold as default if available
     device_upper = section.get("output_load_up_config", 0)
@@ -855,6 +976,10 @@ def check_oposs_wiseways_ups_battery_charge(
         return
     
     charge_percent = section.get("battery_charge_percent", 0)
+    unusable = _unreadable(section, "battery_charge_percent", "Battery charge")
+    if unusable:
+        yield unusable
+        return
     if charge_percent <= 0:
         yield Result(state=State.UNKNOWN, summary="Charge data not available")
         yield Metric("battery_charge", float('nan'))
@@ -896,6 +1021,10 @@ def check_oposs_wiseways_ups_battery_runtime(
         return
     
     runtime = section.get("battery_runtime_seconds", 0)
+    unusable = _unreadable(section, "battery_runtime_seconds", "Battery runtime")
+    if unusable:
+        yield unusable
+        return
     if runtime <= 0:
         yield Result(state=State.UNKNOWN, summary="Runtime data not available")
         yield Metric("battery_runtime", float('nan'))
@@ -1245,7 +1374,10 @@ def check_oposs_wiseways_ups_environment(
         return
 
     # Temperature check
-    if env_temp > 0:
+    unreadable_temp = _unreadable(section, "env_temperature", "Temperature")
+    if unreadable_temp:
+        yield unreadable_temp
+    elif env_temp > 0:
         yield from check_levels(
             env_temp,
             levels_upper=params.get("env_temp_upper", ("fixed", (35.0, 40.0))),
@@ -1256,7 +1388,10 @@ def check_oposs_wiseways_ups_environment(
         )
 
     # Humidity check
-    if env_humi > 0:
+    unreadable_humi = _unreadable(section, "env_humidity", "Humidity")
+    if unreadable_humi:
+        yield unreadable_humi
+    elif env_humi > 0:
         yield from check_levels(
             env_humi,
             levels_upper=params.get("env_humidity_upper", ("fixed", (70.0, 80.0))),
