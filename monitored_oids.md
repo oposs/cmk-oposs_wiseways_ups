@@ -49,7 +49,15 @@ Monitors power source, operational mode, and power failures.
 | .1.3.6.1.2.1.33.1.3.1.0 | upsInputLineBads | 0 | count |
 | .1.3.6.1.4.1.44782.1.4.4.1.77.0 | ups1inputAbnormal | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.78.0 | ups1outputAbnormal | 0 | flag |
-| .1.3.6.1.4.1.44782.1.4.4.1.80.0 | ups1bypassStatus | 1 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.80.0 | ups1bypassStatus | 0 | flag |
+
+The example values are those of a UPS on mains, for which the service is OK.
+upsOutputSource 4 (bypass) or 5 (battery) makes it WARN, any other value than
+3 (normal) makes it CRIT. upsBaseOutputStatus 2 (onLine) is OK, 1 (unknown)
+is ignored, 3, 4, 6, 9, 12, 13 and 15 make it WARN, and 5, 7, 8, 10, 11 and 14
+make it CRIT (names under "Base Output Status" below).
+upsInputLineBads above 0 makes it WARN, and so does any of the three flags at 1:
+ups1bypassStatus 1 shows as "Bypass active".
 
 ### Alarm Status Service
 Monitors system alarms and critical conditions.
@@ -61,10 +69,17 @@ Monitors system alarms and critical conditions.
 | .1.3.6.1.4.1.44782.1.4.4.1.79.0 | ups1overLoad | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.81.0 | ups1fanFailure | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.85.0 | ups1shutdownRequest | 0 | flag |
-| .1.3.6.1.4.1.44782.1.4.4.1.86.0 | ups1testInProgress | 1 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.86.0 | ups1testInProgress | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.89.0 | ups1shutdownImminent | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.93.0 | ups1lowBatteryShutdownImminent | 0 | flag |
 | .1.3.6.1.4.1.44782.1.4.4.1.94.0 | ups1systemStatus | 1 | status |
+
+The example values are those of a UPS without alarm, for which the service
+shows "No active alarms". A flag at 1 makes the service WARN, except
+ups1abnormalCommunication, ups1shutdownImminent and
+ups1lowBatteryShutdownImminent, which make it CRIT. ups1testInProgress 1 shows
+as "Warning: Test in progress". ups1systemStatus 1 is normal, 2 makes the
+service WARN and 3 makes it CRIT.
 
 ### Physical Measurement Services
 

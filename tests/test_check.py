@@ -46,9 +46,9 @@ WW = ".1.3.6.1.4.1.44782."  # Wiseway enterprise tree
 XPPC = ".1.3.6.1.4.1.935.1.1.1."  # XPPC-MIB
 
 # Every fetched OID, its name and the value of a healthy UPS on mains.
-# Values from monitored_oids.md; ups1bypassStatus and ups1testInProgress
-# are 0 here although that file lists 1 for both (see the report on the
-# onboarding PR: the check turns 1 into WARN).
+# Values from monitored_oids.md, except two: the maintenance dates lie in
+# the future here so that UPS System Info is OK, and the device thresholds
+# and the THS sensor are empty, as on a UPS without them.
 WALK = {
     UPS + "1.2.0": ("upsIdentModel", "6000VA"),
     WW + "1.4.4.1.2.0": ("ups1equipmentManufacturer", "Others"),
@@ -573,6 +573,32 @@ def test_alarm_system_status(check, raw, state, text):
     _, out = _run(check, "UPS Alarm Status", ups1systemStatus=raw)
     assert _worst(out) == state
     assert text in _text(out)
+
+
+def _documented_examples():
+    """OID -> example value from the tables in monitored_oids.md, as the UPS
+    sends it: '"6000VA"' is 6000VA, '2 (batteryNormal)' is 2."""
+    examples = {}
+    for line in (ROOT / "monitored_oids.md").read_text().splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 3 and cells[0].startswith(".1.3.6.1."):
+            examples[cells[0]] = cells[2].split(" (")[0].strip('"')
+    return examples
+
+
+@pytest.mark.parametrize("service, summary", [
+    ("UPS Alarm Status", "No active alarms"),
+    ("UPS Power Status", "Power source: normal"),
+])
+def test_documented_examples_are_a_healthy_ups(check, service, summary):
+    """The example values in monitored_oids.md describe a UPS on mains with
+    no alarm, so the status services built from them are OK."""
+    examples = _documented_examples()
+    changes = {name: examples[oid] for oid, (name, _) in WALK.items() if oid in examples}
+    assert "ups1bypassStatus" in changes and "ups1testInProgress" in changes
+    _, out = _run(check, service, **changes)
+    assert _summaries(out) == [summary]
+    assert _worst(out) == State.OK
 
 
 def test_alarm_status_lists_several_alarms(check):
