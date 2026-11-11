@@ -154,7 +154,7 @@ service WARN and 3 makes it CRIT.
 #### Output Power Service
 | OID | Description | Example Value | Unit |
 |-----|-------------|---------------|------|
-| .1.3.6.1.4.1.44782.1.4.4.1.48.0 | ups1outputUPhaseActivePower | 0.00 | W |
+| .1.3.6.1.4.1.44782.1.4.4.1.48.0 | ups1outputUPhaseActivePower | 0.00 | kW (the service shows W) |
 
 #### Output Load Service
 | OID | Description | Example Value | Unit | Thresholds |

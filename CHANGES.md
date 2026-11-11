@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- "UPS Output Power" showed "Output power: 0W" on a UPS that delivered
+  200 W, because the card sends this value in kW. The service and the
+  `oposs_wiseways_ups_output_power` metric now show watts, and the rule
+  field "Output power upper levels" now compares against watts as labelled;
+  the graph history before this release reads 1000 times too low.
+- "UPS System Info" showed the model and firmware with the padding and
+  line end the card sends, for example "Model: 1000VA     " and
+  "FW: VER 6.02  " followed by a carriage return; the texts are now trimmed.
 
 ## 0.6.0 - 2026-11-11
 ### Changed

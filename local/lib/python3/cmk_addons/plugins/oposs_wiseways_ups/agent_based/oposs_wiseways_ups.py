@@ -45,8 +45,8 @@ def minutes_to_seconds(value: str) -> float:
         return float('NaN')
 
 def identity_str(value: str) -> str:
-    """Return string as-is or default"""
-    return value or "Unknown"
+    """Return the string without the padding and line end the card sends, or a default"""
+    return value.strip() or "Unknown"
 
 def identity_float(value: str) -> float:
     """Convert to float directly, handling comma decimal separators"""
@@ -56,6 +56,13 @@ def identity_float(value: str) -> float:
         return float(value.replace(",", "."))
     except (ValueError, TypeError, AttributeError):
         return float('NaN')
+
+def kilowatts_to_watts(value: str) -> float:
+    """The card sends the active power in kW ('0.20' while upsOutputPower says 200 W)"""
+    if _is_no_value(value):
+        return NO_VALUE
+    return parse_enterprise_string(value) * 1000.0
+
 
 def parse_tenths(value: str) -> float:
     """Parse integer value representing tenths (e.g. 243 -> 24.3)"""
@@ -245,7 +252,7 @@ OID_DEFINITIONS: list[OIDDefinition] = [
     OIDDefinition("output_current", "4.1.44782.1.4.4.1.45.0", "ups1outputUPhaseCurrent",
                   "output_current", converter=parse_enterprise_string),
     OIDDefinition("output_power", "4.1.44782.1.4.4.1.48.0", "ups1outputUPhaseActivePower",
-                  "output_power_watts", converter=parse_enterprise_string),
+                  "output_power_watts", converter=kilowatts_to_watts),
     OIDDefinition("output_load", "4.1.44782.1.4.4.1.51.0", "ups1outputUPhaseLoadRate",
                   "output_load_percent", converter=parse_enterprise_string),
     
@@ -341,7 +348,7 @@ def parse_oposs_wiseways_ups(string_table):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
                             parsed[oid_def.output_key] = "Unknown"
-                        elif oid_def.converter in [identity_float, parse_enterprise_string, parse_tenths]:
+                        elif oid_def.converter in [identity_float, parse_enterprise_string, parse_tenths, kilowatts_to_watts]:
                             parsed[oid_def.output_key] = 0.0
                         elif oid_def.converter == identity_int:
                             parsed[oid_def.output_key] = 0
@@ -357,7 +364,7 @@ def parse_oposs_wiseways_ups(string_table):
                     parsed[oid_def.output_key] = "unknown"
                 elif oid_def.converter == identity_str:
                     parsed[oid_def.output_key] = "Unknown"
-                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds, parse_tenths]:
+                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds, parse_tenths, kilowatts_to_watts]:
                     parsed[oid_def.output_key] = 0.0
                 elif oid_def.converter == identity_int:
                     parsed[oid_def.output_key] = 0

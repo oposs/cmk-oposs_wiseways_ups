@@ -299,7 +299,7 @@ def test_nothing_is_discovered_without_data(check):
 @pytest.mark.parametrize("service, changes", [
     ("UPS Battery Current", {"ups1batteryChargingAndDischargingCurrent": "1.5"}),
     ("UPS Output Current", {"ups1outputUPhaseCurrent": "4.2"}),
-    ("UPS Output Power", {"ups1outputUPhaseActivePower": "950"}),
+    ("UPS Output Power", {"ups1outputUPhaseActivePower": "0.95"}),
     ("UPS Environment", {"thsOneTempData": "243"}),
     ("UPS Environment", {"thsOneHumiData": "456"}),
 ])
@@ -458,7 +458,7 @@ def test_default_levels(check, service, name, value, state):
     ("UPS Output Current", {"output_current_upper": ("fixed", (10.0, 20.0))},
      "ups1outputUPhaseCurrent", "25", State.CRIT),
     ("UPS Output Power", {"power_upper": ("fixed", (4000.0, 4500.0))},
-     "ups1outputUPhaseActivePower", "4200", State.WARN),
+     "ups1outputUPhaseActivePower", "4.2", State.WARN),
     ("UPS Battery Voltage", {"battery_voltage_upper": ("fixed", (230.0, 235.0))},
      "ups1batteryVoltage", "236", State.CRIT),
     ("UPS Battery Voltage", {"battery_voltage_lower": ("fixed", (32.0, 30.0))},
@@ -478,9 +478,9 @@ def test_output_current_and_power_have_no_default_levels(check):
     _, out = _run(check, "UPS Output Current", ups1outputUPhaseCurrent="900")
     assert _worst(out) == State.OK
     assert _metrics(out) == {"oposs_wiseways_ups_output_current": 900.0}
-    _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99999")
+    _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99.999")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"oposs_wiseways_ups_output_power": 99999.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_power": pytest.approx(99999.0)}
 
 
 # --- battery ----------------------------------------------------------------
@@ -704,7 +704,9 @@ def test_environment_sensor_gone_after_discovery(check):
 def test_device_thresholds_are_the_default_levels(check):
     """README: 'Dynamic thresholds from device configuration when available'.
     Checkmk always passes the plugin's default parameters, so params.get()
-    never falls back to the device values."""
+    never falls back to the device values. On the real walk six of the seven
+    thresholds read 0 (not set); upsBatteryVoltLowConfig reads 33 V, which
+    would fit the 36 V string far better than the 180/170 V default."""
     _, out = _run(check, "UPS Input Voltage", ups1inputUPhaseVoltage="245",
                   inputVoltUpConfig="242", inputVoltLowConfig="187")
     assert _worst(out) == State.WARN
@@ -715,6 +717,7 @@ def test_device_thresholds_are_the_default_levels(check):
 @pytest.mark.parametrize("raw, name", [("9", "onBuck"), ("8", "standBy"), ("7", "rebooting"),
                                        ("6", "onBypass"), ("5", "sleeping"), ("4", "onBoost")])
 def test_base_output_status_follows_xppc_mib(check, raw, name):
+    """The real walk reads 2 (onLine), which both tables agree on."""
     _, out = _run(check, "UPS Power Status", upsBaseOutputStatus=raw)
     assert f"Base output status: {name}" in _text(out)
 
