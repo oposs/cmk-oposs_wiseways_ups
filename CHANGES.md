@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics must be updated.
 
 ### Fixed
+- "UPS Environment" took a THS sensor reading of 0.0 °C or below as "no
+  sensor": the temperature was left out of the service, which then showed
+  only the humidity, or "No environmental sensor data" when the humidity
+  read 0 % as well. A temperature of 0 °C or frost, and a humidity of 0 %,
+  are now shown and checked against the levels; only an empty value or
+  -99998 counts as no sensor.
 - "UPS Battery Current", "UPS Output Current" and "UPS Output Power" were
   missing on a UPS that ran on mains without load during the service
   discovery, because they appeared only while the reading was not 0. They

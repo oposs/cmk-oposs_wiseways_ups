@@ -61,7 +61,7 @@ and its "Temperature" levels to UPS Battery Temperature.
 | **UPS Output Load** | Load percentage | `oposs_wiseways_ups_output_load` | upper 80/90 % | yes | always |
 | **UPS Output Power** | Active output power | `oposs_wiseways_ups_output_power` | none | yes | numeric value |
 | **UPS Output Current** | Output current | `oposs_wiseways_ups_output_current` | none | yes | numeric value |
-| **UPS Environment** | THS sensor temperature and humidity | `oposs_wiseways_ups_env_temperature`, `oposs_wiseways_ups_env_humidity` | temperature upper 35/40 °C, lower 10/5 °C; humidity upper 70/80 %, lower 20/10 % | yes | temperature or humidity above 0 |
+| **UPS Environment** | THS sensor temperature and humidity | `oposs_wiseways_ups_env_temperature`, `oposs_wiseways_ups_env_humidity` | temperature upper 35/40 °C, lower 10/5 °C; humidity upper 70/80 %, lower 20/10 % | yes | numeric temperature or humidity |
 
 A service marked "value above 0" is found by the service discovery only while
 the UPS reports a value above 0. A service marked "numeric value" is found

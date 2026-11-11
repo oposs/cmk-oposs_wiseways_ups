@@ -689,6 +689,33 @@ def test_environment_levels(check, temp, humi, state):
     assert _worst(out) == state
 
 
+@pytest.mark.parametrize("temp, humi, summaries, state", [
+    ("0", "456", ["Temperature: 0.0°C", "Humidity: 46%"], State.CRIT),
+    ("-50", "", ["Temperature: -5.0°C"], State.CRIT),
+    ("", "0", ["Humidity: 0%"], State.CRIT),
+    ("-99998", "456", ["Humidity: 46%"], State.OK),
+])
+def test_environment_readings_at_and_below_zero(check, temp, humi, summaries, state):
+    """0.0 °C and frost are readings of the sensor; only an empty value or
+    -99998 means it has no value."""
+    discovered, out = _run(check, "UPS Environment", thsOneTempData=temp, thsOneHumiData=humi)
+    assert discovered == [Service()]
+    assert [text.split(" (")[0] for text in _summaries(out)] == summaries
+    assert _worst(out) == state
+
+
+def test_environment_without_sensor_and_another_unreadable_value(check):
+    _, out = _run(check, "UPS Environment", ups1batteryTimeRemaining="N/A")
+    assert out == [Result(state=State.UNKNOWN, summary="No environmental sensor data")]
+
+
+@pytest.mark.parametrize("temp, humi", [("", ""), ("-99998", "-99998"), ("-99998", "")])
+def test_environment_without_sensor(check, temp, humi):
+    discovered, out = _run(check, "UPS Environment", thsOneTempData=temp, thsOneHumiData=humi)
+    assert discovered == []
+    assert out == [Result(state=State.UNKNOWN, summary="No environmental sensor data")]
+
+
 def test_environment_sensor_gone_after_discovery(check):
     section = _parse(check)
     plugin = _plugins(check)["UPS Environment"]

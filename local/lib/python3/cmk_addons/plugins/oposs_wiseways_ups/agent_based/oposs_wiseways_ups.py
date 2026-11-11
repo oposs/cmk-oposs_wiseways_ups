@@ -95,14 +95,21 @@ def _unreadable(section: dict[str, Any], key: str, label: str) -> Result | None:
     return Result(state=State.UNKNOWN, summary=f"{label}: cannot read {raw!r} as a number")
 
 
+def _is_no_value(raw: str) -> bool:
+    """The UPS sends -99998 for 'no value', before any scaling"""
+    try:
+        return float(raw.replace(",", ".")) == NO_VALUE
+    except ValueError:
+        return False
+
+
 def _has_reading(section: dict[str, Any], key: str) -> bool:
     """True when the UPS sent a number for key: not empty, not text, not the
-    'no value' marker. 0 is a reading."""
+    'no value' marker. 0 and negative values are readings."""
     return (
         key in section
-        and key not in section.get("_missing", ())
+        and key not in section.get("_no_reading", ())
         and key not in section.get("_unreadable", {})
-        and section[key] != NO_VALUE
     )
 
 
@@ -327,6 +334,9 @@ def parse_oposs_wiseways_ups(string_table):
                         converted = parsed[oid_def.output_key]
                         if isinstance(converted, float) and math.isnan(converted):
                             parsed.setdefault("_unreadable", {})[oid_def.output_key] = value
+                        # parse_tenths turns -99998 into -9999.8, so look at the text
+                        if _is_no_value(value):
+                            parsed.setdefault("_no_reading", set()).add(oid_def.output_key)
                     except (ValueError, TypeError):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
@@ -341,7 +351,7 @@ def parse_oposs_wiseways_ups(string_table):
                     parsed[oid_def.output_key] = value
             else:
                 # Keep track of what came empty: 0.0 below is no reading
-                parsed.setdefault("_missing", set()).add(oid_def.output_key)
+                parsed.setdefault("_no_reading", set()).add(oid_def.output_key)
                 # Set defaults for empty values
                 if oid_def.mapper:
                     parsed[oid_def.output_key] = "unknown"
@@ -1364,9 +1374,8 @@ check_plugin_oposs_wiseways_ups_system_info = CheckPlugin(
 # Check plugin for UPS Environment (THS sensor)
 def discover_oposs_wiseways_ups_environment(section: dict[str, Any]) -> DiscoveryResult:
     # Discover only if environmental sensor data is present
-    env_temp = section.get("env_temperature", 0)
-    env_humi = section.get("env_humidity", 0)
-    if section and (env_temp > 0 or env_humi > 0):
+    if section and (_has_reading(section, "env_temperature")
+                    or _has_reading(section, "env_humidity")):
         yield Service()
 
 
@@ -1380,8 +1389,11 @@ def check_oposs_wiseways_ups_environment(
     env_temp = section.get("env_temperature", 0)
     env_humi = section.get("env_humidity", 0)
 
-    # Check if sensor data is available
-    if env_temp <= 0 and env_humi <= 0:
+    # Without a sensor both values are empty or -99998; 0 and frost are readings
+    has_temp = _has_reading(section, "env_temperature")
+    has_humi = _has_reading(section, "env_humidity")
+    unreadable = section.get("_unreadable", {})
+    if not (has_temp or has_humi or "env_temperature" in unreadable or "env_humidity" in unreadable):
         yield Result(state=State.UNKNOWN, summary="No environmental sensor data")
         return
 
@@ -1389,7 +1401,7 @@ def check_oposs_wiseways_ups_environment(
     unreadable_temp = _unreadable(section, "env_temperature", "Temperature")
     if unreadable_temp:
         yield unreadable_temp
-    elif env_temp > 0:
+    elif has_temp:
         yield from check_levels(
             env_temp,
             levels_upper=params.get("env_temp_upper", ("fixed", (35.0, 40.0))),
@@ -1403,7 +1415,7 @@ def check_oposs_wiseways_ups_environment(
     unreadable_humi = _unreadable(section, "env_humidity", "Humidity")
     if unreadable_humi:
         yield unreadable_humi
-    elif env_humi > 0:
+    elif has_humi:
         yield from check_levels(
             env_humi,
             levels_upper=params.get("env_humidity_upper", ("fixed", (70.0, 80.0))),
