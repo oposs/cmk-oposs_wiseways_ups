@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- Since 0.6.0, "UPS Battery Voltage" was CRIT on Wiseway units with 3 × 12 V
+  batteries, for example "Battery voltage: 41.2V (warn/crit below
+  180.0V/170.0V)" on a healthy battery on float charge. The default lower
+  levels and the prefill of the rule field "Battery voltage lower levels" are
+  32/30 V again, and the prefill of "Battery voltage upper levels" is 220/230 V
+  again, as in 0.5.0.
+- "UPS Power Status" stayed WARN with "Input line failures: 6" for as long as
+  the card ran, after a single past mains failure. It now goes WARN only when
+  the count rose since the last check, shows the total as "Input line
+  failures: 6 in total", and stays OK on the first check and after the card
+  restarted its count.
 - "UPS Output Power" showed "Output power: 0W" on a UPS that delivered
   200 W, because the card sends this value in kW. The service and the
   `oposs_wiseways_ups_output_power` metric now show watts, and the rule

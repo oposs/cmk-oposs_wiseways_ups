@@ -23,6 +23,8 @@ import shutil
 import subprocess
 import sys
 
+import pytest
+
 # The Checkmk version this plugin targets. Raise it to find out what breaks.
 CMK_VERSION = "2.3.0"
 
@@ -81,3 +83,36 @@ for libexec in sorted(ROOT.glob("local/lib/python3/**/libexec")):
 # so `cmk.base` resolves, and it merges with them because neither side defines
 # `cmk/__init__.py`.
 sys.path.insert(0, str(HERE / "cmk_stubs"))
+
+
+# --- plugin specific --------------------------------------------------------
+
+
+
+class _ServiceValueStore:
+    def __init__(self):
+        self.active_service_interface = {}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _session_value_store():
+    """A value store for module fixtures that run checks before any test."""
+    from cmk.agent_based.v1 import value_store as module
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(module, "_active_host_value_store", _ServiceValueStore())
+        yield
+
+
+@pytest.fixture(autouse=True)
+def value_store(monkeypatch, _session_value_store):
+    """The value store get_value_store() returns, empty for every test.
+
+    Checkmk sets one up per service before it calls the check; outside
+    Checkmk get_value_store() fails an assertion. Run a check twice in one
+    test to see the second call read what the first one stored."""
+    from cmk.agent_based.v1 import value_store as module
+
+    store = _ServiceValueStore()
+    monkeypatch.setattr(module, "_active_host_value_store", store)
+    return store.active_service_interface

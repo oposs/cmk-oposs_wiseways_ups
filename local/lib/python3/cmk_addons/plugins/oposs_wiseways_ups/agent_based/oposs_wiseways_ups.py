@@ -16,6 +16,7 @@ from cmk.agent_based.v2 import (
     State,
     check_levels,
     contains,
+    get_value_store,
     render,
 )
 
@@ -584,7 +585,7 @@ def check_oposs_wiseways_ups_battery_voltage(
     if device_lower > 0:
         default_levels_lower = ("fixed", (device_lower, device_lower - 2))
     else:
-        default_levels_lower = ("fixed", (180.0, 170.0))
+        default_levels_lower = ("fixed", (32.0, 30.0))
     
     yield from check_levels(
         voltage,
@@ -604,7 +605,7 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
     check_function=check_oposs_wiseways_ups_battery_voltage,
     check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
-        "battery_voltage_lower": ("fixed", (180.0, 170.0)),
+        "battery_voltage_lower": ("fixed", (32.0, 30.0)),
     },
 )
 
@@ -1176,10 +1177,23 @@ def check_oposs_wiseways_ups_power_status(
             state = State.CRIT
         yield Result(state=state, notice=f"Base output status: {base_status}")
     
-    # Input line failures
+    # Input line failures: upsInputLineBads counts every mains failure since
+    # the card started, so a count above 0 is history. A real unit on mains
+    # read 6 and stayed WARN for good. Warn only on a rise since the last
+    # check; the first check, or a counter that went down (card restart),
+    # has nothing to compare with.
     line_bads = section.get("input_line_bads", 0)
-    if line_bads > 0:
-        yield Result(state=State.WARN, summary=f"Input line failures: {line_bads}")
+    value_store = get_value_store()
+    last_line_bads = value_store.get("input_line_bads")
+    value_store["input_line_bads"] = line_bads
+    if last_line_bads is not None and line_bads > last_line_bads:
+        yield Result(
+            state=State.WARN,
+            summary=f"Input line failures: {line_bads - last_line_bads} new since last check"
+            f" ({line_bads} in total)",
+        )
+    else:
+        yield Result(state=State.OK, summary=f"Input line failures: {line_bads} in total")
     yield Metric("oposs_wiseways_ups_input_line_bads", line_bads)
     
     # Alarm flags

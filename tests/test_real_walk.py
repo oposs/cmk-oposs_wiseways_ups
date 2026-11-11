@@ -135,10 +135,7 @@ def test_every_service_is_discovered_on_the_real_device(check, service):
     assert discovered == [Service()]
 
 
-HEALTHY = [s for s in SERVICES if s not in ("UPS Battery Voltage", "UPS Power Status")]
-
-
-@pytest.mark.parametrize("service", HEALTHY)
+@pytest.mark.parametrize("service", SERVICES)
 def test_the_real_device_on_mains_is_ok(check, service):
     _, out = _real_run(check, service)
     assert _worst(out) == State.OK, _text(out)
@@ -183,20 +180,22 @@ def test_real_battery_current_on_mains(check):
                    Result(state=State.OK, summary="Charging: 4.5A")]
 
 
-# --- found with the real walk, owner decides (xfail strict) ------------------
-
-@pytest.mark.xfail(strict=True, reason="BUG: the default lower levels 180/170 V make UPS "
-                   "Battery Voltage CRIT on a healthy 36 V string at 41.2 V float")
 def test_real_battery_voltage_is_ok(check):
+    """3 blocks of 12 V float at 41.2 V; 0.6.0 went CRIT here with its
+    180/170 V lower levels."""
     _, out = _real_run(check, "UPS Battery Voltage")
-    assert _worst(out) == State.OK, _text(out)
+    assert out == [Result(state=State.OK, summary="Battery voltage: 41.2V"),
+                   Metric("oposs_wiseways_ups_battery_voltage", 41.2)]
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: upsInputLineBads counts input failures since "
-                   "the card started; any count above 0 keeps UPS Power Status WARN for good")
-def test_real_power_status_is_ok(check):
+def test_real_power_status_is_ok_with_past_line_failures(check):
+    """upsInputLineBads reads 6 on mains; 0.6.0 stayed WARN on it for good."""
     _, out = _real_run(check, "UPS Power Status")
     assert _worst(out) == State.OK, _text(out)
+    assert "Input line failures: 6 in total" in _summaries(out)
+
+
+# --- found with the real walk, owner decides (xfail strict) ------------------
 
 
 @pytest.mark.xfail(strict=True, reason="BUG: ups1powerSupplyMode reads 3 on mains, which "

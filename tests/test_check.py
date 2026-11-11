@@ -417,11 +417,11 @@ LEVELS = [
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "265", State.CRIT),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "205", State.WARN),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "195", State.CRIT),
-    # 16 blocks of 12 V: 217.9 V on float charge, 180 V is 11.25 V per block
-    ("UPS Battery Voltage", "ups1batteryVoltage", "217.9", State.OK),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "180.0", State.OK),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "179.9", State.WARN),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "169.9", State.CRIT),
+    # 3 blocks of 12 V: 40.7 to 41.2 V on float charge on all units of one site
+    ("UPS Battery Voltage", "ups1batteryVoltage", "41.2", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "32.0", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "31.9", State.WARN),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "29.9", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "41", State.WARN),
     ("UPS Battery Temperature", "ups1batteryTemperature", "46", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "8", State.WARN),
@@ -567,7 +567,6 @@ def test_power_status_base_output_status(check, raw, state):
 
 
 @pytest.mark.parametrize("changes, text", [
-    ({"upsInputLineBads": "3"}, "Input line failures: 3"),
     ({"ups1inputAbnormal": "1"}, "Input abnormal alarm"),
     ({"ups1outputAbnormal": "1"}, "Output abnormal alarm"),
     ({"ups1bypassStatus": "1"}, "Bypass active"),
@@ -581,6 +580,46 @@ def test_power_status_warnings(check, changes, text):
 def test_power_status_counts_line_failures(check):
     _, out = _run(check, "UPS Power Status", upsInputLineBads="3")
     assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 3}
+
+
+def _line_bads(check, *counts):
+    """UPS Power Status checked once per count, sharing one value store."""
+    return [_run(check, "UPS Power Status", upsInputLineBads=str(n))[1] for n in counts]
+
+
+def test_line_failures_first_check_is_ok(check, value_store):
+    """After a restart of the site or a new discovery there is nothing to
+    compare with: a count of past failures does not warn."""
+    (out,) = _line_bads(check, 6)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 6 in total" in _summaries(out)
+    assert value_store["input_line_bads"] == 6
+
+
+def test_line_failures_unchanged_is_ok(check):
+    _, out = _line_bads(check, 6, 6)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 6 in total" in _summaries(out)
+
+
+def test_line_failures_increase_warns(check):
+    _, out = _line_bads(check, 6, 8)
+    assert _worst(out) == State.WARN
+    assert "Input line failures: 2 new since last check (8 in total)" in _summaries(out)
+    assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 8}
+
+
+def test_line_failures_warn_only_once(check):
+    _, _, out = _line_bads(check, 6, 7, 7)
+    assert _worst(out) == State.OK
+
+
+def test_line_failures_decrease_is_ok(check, value_store):
+    """The counter starts at 0 again when the card restarts."""
+    _, out = _line_bads(check, 6, 1)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 1 in total" in _summaries(out)
+    assert value_store["input_line_bads"] == 1
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -706,7 +745,7 @@ def test_device_thresholds_are_the_default_levels(check):
     Checkmk always passes the plugin's default parameters, so params.get()
     never falls back to the device values. On the real walk six of the seven
     thresholds read 0 (not set); upsBatteryVoltLowConfig reads 33 V, which
-    would fit the 36 V string far better than the 180/170 V default."""
+    is 1 V above the 32/30 V default."""
     _, out = _run(check, "UPS Input Voltage", ups1inputUPhaseVoltage="245",
                   inputVoltUpConfig="242", inputVoltLowConfig="187")
     assert _worst(out) == State.WARN
