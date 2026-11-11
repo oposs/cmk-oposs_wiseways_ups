@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics must be updated.
 
 ### Fixed
+- The rule field "Battery voltage upper levels" now prefills 235/240 V instead of 220/230 V, which warned during normal float charge and went CRIT during boost charge.
 - "UPS Environment" took a THS sensor reading of 0.0 °C or below as "no
   sensor": the temperature was left out of the service, which then showed
   only the humidity, or "No environmental sensor data" when the humidity
