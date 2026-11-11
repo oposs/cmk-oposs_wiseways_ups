@@ -49,7 +49,7 @@ and its "Temperature" levels to UPS Battery Temperature.
 | **UPS Alarm Status** | System alarm flags and system status | none | none | no | always |
 | **UPS Battery Charge** | Battery charge | `battery_charge` | lower 20/10 % | yes | always |
 | **UPS Battery Runtime** | Remaining runtime | `battery_runtime` | lower 10/5 min | yes | always |
-| **UPS Battery Voltage** | DC battery voltage | `battery_voltage` | lower 32/30 V | yes | value above 0 |
+| **UPS Battery Voltage** | DC battery voltage | `battery_voltage` | lower 180/170 V | yes | value above 0 |
 | **UPS Battery Current** | Charging or discharging current | `battery_current` | none | no | value other than 0 |
 | **UPS Battery Temperature** | Battery temperature | `temperature` | upper 40/45 °C, lower 10/5 °C | yes | value above 0 |
 | **UPS Input Voltage** | AC input voltage | `input_voltage` | upper 250/260 V, lower 210/200 V | yes | value above 0 |

@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- "UPS Battery Voltage" did not warn when the battery voltage sank: the
+  default lower levels were 32/30 V, while the battery string of these UPS
+  floats at about 218 V. The defaults and the prefill of the "Battery
+  voltage lower levels" rule field are now 180/170 V, so a discharging
+  battery shows WARN below 180 V and CRIT below 170 V.
 
 ## 0.5.0 - 2026-11-08
 ### New

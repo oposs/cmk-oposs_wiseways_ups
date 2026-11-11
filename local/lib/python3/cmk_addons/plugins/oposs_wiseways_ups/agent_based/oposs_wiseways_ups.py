@@ -554,7 +554,7 @@ def check_oposs_wiseways_ups_battery_voltage(
     if device_lower > 0:
         default_levels_lower = ("fixed", (device_lower, device_lower - 2))
     else:
-        default_levels_lower = ("fixed", (32.0, 30.0))
+        default_levels_lower = ("fixed", (180.0, 170.0))
     
     yield from check_levels(
         voltage,
@@ -574,7 +574,7 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
     check_function=check_oposs_wiseways_ups_battery_voltage,
     check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
-        "battery_voltage_lower": ("fixed", (32.0, 30.0)),
+        "battery_voltage_lower": ("fixed", (180.0, 170.0)),
     },
 )
 
