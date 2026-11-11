@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+
+### Fixed
+
+## 0.6.0 - 2026-11-11
+### Changed
 - All metrics of the UPS services now start with `oposs_wiseways_ups_`,
   for example `oposs_wiseways_ups_input_voltage`, and the battery
   temperature metric is `oposs_wiseways_ups_battery_temperature`, so the
