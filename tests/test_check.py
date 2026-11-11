@@ -281,9 +281,8 @@ def test_parse_ignores_extra_columns(check):
 def test_discovery_on_the_sample_walk(check):
     section = _parse(check)
     found = {name for name, p in _plugins(check).items() if list(p.discovery_function(section))}
-    # Zero current and power, and no THS sensor: these four stay away
-    assert found == set(SERVICES) - {
-        "UPS Battery Current", "UPS Output Current", "UPS Output Power", "UPS Environment"}
+    # No THS sensor: only UPS Environment stays away
+    assert found == set(SERVICES) - {"UPS Environment"}
 
 
 def test_every_discovered_service_has_no_item(check):
@@ -307,6 +306,37 @@ def test_nothing_is_discovered_without_data(check):
 def test_measurement_services_appear_with_a_value(check, service, changes):
     discovered, _ = _run(check, service, **changes)
     assert discovered == [Service()]
+
+
+CURRENT_AND_POWER = [
+    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent"),
+    ("UPS Output Current", "ups1outputUPhaseCurrent"),
+    ("UPS Output Power", "ups1outputUPhaseActivePower"),
+]
+
+
+@pytest.mark.parametrize("service, name", CURRENT_AND_POWER)
+@pytest.mark.parametrize("raw", ["0.00", "0", "3.5"])
+def test_current_and_power_appear_with_any_reading(check, service, name, raw):
+    """A UPS on mains without load reads 0.00 for these: the services are
+    there before the first load, not only after a discovery under load."""
+    discovered, out = _run(check, service, **{name: raw})
+    assert discovered == [Service()]
+    assert _worst(out) == State.OK
+
+
+@pytest.mark.parametrize("service, name", CURRENT_AND_POWER)
+@pytest.mark.parametrize("raw", ["", "-99998", "N/A"])
+def test_current_and_power_stay_away_without_a_reading(check, service, name, raw):
+    discovered, _ = _run(check, service, **{name: raw})
+    assert discovered == []
+
+
+def test_idle_output_current_and_power_are_ok(check):
+    _, out = _run(check, "UPS Output Current")
+    assert _summaries(out) == ["Output current: 0.0A"]
+    _, out = _run(check, "UPS Output Power")
+    assert _summaries(out) == ["Output power: 0W"]
 
 
 @pytest.mark.parametrize("service, name", [

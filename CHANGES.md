@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics must be updated.
 
 ### Fixed
+- "UPS Battery Current", "UPS Output Current" and "UPS Output Power" were
+  missing on a UPS that ran on mains without load during the service
+  discovery, because they appeared only while the reading was not 0. They
+  are now discovered whenever the UPS sends a number, 0 included; a reading
+  of -99998 or text such as "N/A" no longer creates "UPS Battery Current",
+  which then went UNKNOWN.
 - "UPS Battery Voltage" did not warn when the battery voltage sank: the
   default lower levels were 32/30 V, while the battery string of these UPS
   floats at about 218 V. The defaults and the prefill of the "Battery

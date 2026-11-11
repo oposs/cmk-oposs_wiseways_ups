@@ -95,6 +95,17 @@ def _unreadable(section: dict[str, Any], key: str, label: str) -> Result | None:
     return Result(state=State.UNKNOWN, summary=f"{label}: cannot read {raw!r} as a number")
 
 
+def _has_reading(section: dict[str, Any], key: str) -> bool:
+    """True when the UPS sent a number for key: not empty, not text, not the
+    'no value' marker. 0 is a reading."""
+    return (
+        key in section
+        and key not in section.get("_missing", ())
+        and key not in section.get("_unreadable", {})
+        and section[key] != NO_VALUE
+    )
+
+
 # Value mappers
 BATTERY_STATUS_MAP = {
     "1": "unknown",
@@ -329,6 +340,8 @@ def parse_oposs_wiseways_ups(string_table):
                 else:
                     parsed[oid_def.output_key] = value
             else:
+                # Keep track of what came empty: 0.0 below is no reading
+                parsed.setdefault("_missing", set()).add(oid_def.output_key)
                 # Set defaults for empty values
                 if oid_def.mapper:
                     parsed[oid_def.output_key] = "unknown"
@@ -581,8 +594,7 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
 
 # Check plugin for UPS Battery Current
 def discover_oposs_wiseways_ups_battery_current(section: dict[str, Any]) -> DiscoveryResult:
-    current = section.get("battery_current", 0)
-    if section and current != 0:
+    if section and _has_reading(section, "battery_current"):
         yield Service()
 
 
@@ -624,7 +636,7 @@ check_plugin_oposs_wiseways_ups_battery_current = CheckPlugin(
 
 # Check plugin for UPS Output Current
 def discover_oposs_wiseways_ups_output_current(section: dict[str, Any]) -> DiscoveryResult:
-    if section and section.get("output_current", 0) > 0:
+    if section and _has_reading(section, "output_current"):
         yield Service()
 
 
@@ -863,7 +875,7 @@ check_plugin_oposs_wiseways_ups_bypass_frequency = CheckPlugin(
 
 # Check plugin for UPS Output Power
 def discover_oposs_wiseways_ups_output_power(section: dict[str, Any]) -> DiscoveryResult:
-    if section and section.get("output_power_watts", 0) > 0:
+    if section and _has_reading(section, "output_power_watts"):
         yield Service()
 
 
