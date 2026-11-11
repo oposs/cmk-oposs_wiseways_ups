@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+- All metrics of the UPS services now start with `oposs_wiseways_ups_`,
+  for example `oposs_wiseways_ups_input_voltage`, and the battery
+  temperature metric is `oposs_wiseways_ups_battery_temperature`, so the
+  plugin keeps working on Checkmk 3.0, which refuses metric names that
+  clash with built-in ones. The graphs show the history recorded under the
+  old names; custom graphs, dashboards or exports that name the old
+  metrics must be updated.
 
 ### Fixed
 - "UPS Battery Voltage" did not warn when the battery voltage sank: the

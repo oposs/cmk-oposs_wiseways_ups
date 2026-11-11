@@ -333,19 +333,19 @@ def test_every_check_says_no_data_on_an_empty_section(check, service):
 # --- the sample walk, service by service -------------------------------------
 
 SAMPLE = [
-    ("UPS Input Voltage", State.OK, "Input voltage: 231.9V", {"input_voltage": 231.9}),
-    ("UPS Output Voltage", State.OK, "Output voltage: 231.9V", {"output_voltage": 231.9}),
-    ("UPS Bypass Voltage", State.OK, "Bypass voltage: 232.9V", {"bypass_voltage": 232.9}),
-    ("UPS Battery Voltage", State.OK, "Battery voltage: 217.9V", {"battery_voltage": 217.9}),
-    ("UPS Battery Temperature", State.OK, "Temperature: 28.0°C", {"temperature": 28.0}),
-    ("UPS Input Frequency", State.OK, "Input frequency: 50.0 Hz", {"input_frequency": 50.0}),
-    ("UPS Output Frequency", State.OK, "Output frequency: 50.0 Hz", {"output_frequency": 50.0}),
-    ("UPS Bypass Frequency", State.OK, "Bypass frequency: 50.0 Hz", {"bypass_frequency": 50.0}),
-    ("UPS Output Load", State.OK, "Load: 0%", {"output_load": 0.0}),
-    ("UPS Battery Charge", State.OK, "Battery charge: 100.00%", {"battery_charge": 100.0}),
-    ("UPS Battery Runtime", State.OK, "Battery runtime: 15 minutes 0 seconds", {"battery_runtime": 900.0}),
-    ("UPS Battery Status", State.OK, "Status: batteryNormal", {"time_on_battery": 0}),
-    ("UPS Power Status", State.OK, "Power source: normal", {"input_line_bads": 0}),
+    ("UPS Input Voltage", State.OK, "Input voltage: 231.9V", {"oposs_wiseways_ups_input_voltage": 231.9}),
+    ("UPS Output Voltage", State.OK, "Output voltage: 231.9V", {"oposs_wiseways_ups_output_voltage": 231.9}),
+    ("UPS Bypass Voltage", State.OK, "Bypass voltage: 232.9V", {"oposs_wiseways_ups_bypass_voltage": 232.9}),
+    ("UPS Battery Voltage", State.OK, "Battery voltage: 217.9V", {"oposs_wiseways_ups_battery_voltage": 217.9}),
+    ("UPS Battery Temperature", State.OK, "Temperature: 28.0°C", {"oposs_wiseways_ups_battery_temperature": 28.0}),
+    ("UPS Input Frequency", State.OK, "Input frequency: 50.0 Hz", {"oposs_wiseways_ups_input_frequency": 50.0}),
+    ("UPS Output Frequency", State.OK, "Output frequency: 50.0 Hz", {"oposs_wiseways_ups_output_frequency": 50.0}),
+    ("UPS Bypass Frequency", State.OK, "Bypass frequency: 50.0 Hz", {"oposs_wiseways_ups_bypass_frequency": 50.0}),
+    ("UPS Output Load", State.OK, "Load: 0%", {"oposs_wiseways_ups_output_load": 0.0}),
+    ("UPS Battery Charge", State.OK, "Battery charge: 100.00%", {"oposs_wiseways_ups_battery_charge": 100.0}),
+    ("UPS Battery Runtime", State.OK, "Battery runtime: 15 minutes 0 seconds", {"oposs_wiseways_ups_battery_runtime": 900.0}),
+    ("UPS Battery Status", State.OK, "Status: batteryNormal", {"oposs_wiseways_ups_time_on_battery": 0}),
+    ("UPS Power Status", State.OK, "Power source: normal", {"oposs_wiseways_ups_input_line_bads": 0}),
     ("UPS Alarm Status", State.OK, "No active alarms", {}),
     ("UPS System Info", State.OK,
      "Model: 6000VA, Mfr: Others, S/N: 5A1903026810Q9100039", {}),
@@ -447,10 +447,10 @@ def test_rule_levels(check, service, params, name, value, state):
 def test_output_current_and_power_have_no_default_levels(check):
     _, out = _run(check, "UPS Output Current", ups1outputUPhaseCurrent="900")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"output_current": 900.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_current": 900.0}
     _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99999")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"output_power": 99999.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_power": 99999.0}
 
 
 # --- battery ----------------------------------------------------------------
@@ -465,7 +465,7 @@ def test_battery_status_on_battery(check):
     _, out = _run(check, "UPS Battery Status", upsSecondsOnBattery="125")
     assert _worst(out) == State.WARN
     assert "On battery: 2 minutes 5 seconds" in _text(out)
-    assert _metrics(out) == {"time_on_battery": 125}
+    assert _metrics(out) == {"oposs_wiseways_ups_time_on_battery": 125}
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -487,12 +487,12 @@ def test_battery_current(check, raw, summary, metric):
     discovered, out = _run(check, "UPS Battery Current",
                            ups1batteryChargingAndDischargingCurrent=raw)
     assert discovered == [Service()]
-    assert out == [Metric("battery_current", metric), Result(state=State.OK, summary=summary)]
+    assert out == [Metric("oposs_wiseways_ups_battery_current", metric), Result(state=State.OK, summary=summary)]
 
 
 def test_battery_current_zero_after_discovery(check):
     _, out = _run(check, "UPS Battery Current")
-    assert out == [Result(state=State.OK, summary="No current flow"), Metric("battery_current", 0)]
+    assert out == [Result(state=State.OK, summary="No current flow"), Metric("oposs_wiseways_ups_battery_current", 0)]
 
 
 @pytest.mark.parametrize("service, name, summary", [
@@ -550,7 +550,7 @@ def test_power_status_warnings(check, changes, text):
 
 def test_power_status_counts_line_failures(check):
     _, out = _run(check, "UPS Power Status", upsInputLineBads="3")
-    assert _metrics(out) == {"input_line_bads": 3}
+    assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 3}
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -642,7 +642,7 @@ def test_environment_sensor(check):
     discovered, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="456")
     assert discovered == [Service()]
     assert [r.summary for r in _results(out)] == ["Temperature: 24.3°C", "Humidity: 46%"]
-    assert _metrics(out) == pytest.approx({"env_temperature": 24.3, "env_humidity": 45.6})
+    assert _metrics(out) == pytest.approx({"oposs_wiseways_ups_env_temperature": 24.3, "oposs_wiseways_ups_env_humidity": 45.6})
 
 
 @pytest.mark.parametrize("temp, humi, state", [
@@ -742,7 +742,7 @@ def test_non_numeric_environment_values_are_unknown(check):
         Result(state=State.UNKNOWN, summary="Temperature: cannot read 'N/A' as a number"),
         Result(state=State.OK, summary="Humidity: 46%"),
     ]
-    assert _metrics(out) == pytest.approx({"env_humidity": 45.6})
+    assert _metrics(out) == pytest.approx({"oposs_wiseways_ups_env_humidity": 45.6})
     _, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="--")
     assert _worst(out) == State.UNKNOWN
     assert "Humidity: cannot read '--' as a number" in _text(out)
