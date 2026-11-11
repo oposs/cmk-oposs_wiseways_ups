@@ -1,12 +1,14 @@
 # Wiseway UPS - Monitored OIDs
 
 ## Overview
-This document lists the SNMP OIDs monitored by the CheckMK plugin for Wiseway UPS devices. The plugin supports both standard RFC 1628 UPS MIB OIDs and enterprise-specific OIDs from vendor 44782.
+This document lists the SNMP OIDs monitored by the CheckMK plugin for Wiseway UPS devices. The plugin reads standard RFC 1628 UPS MIB OIDs, one XPPC-MIB OID (upsBaseOutputStatus) and enterprise-specific OIDs from vendor 44782.
 
 ## Implemented OIDs by Service
 
-### System Information Service
-Shows static UPS system information and configuration.
+### System Info Service
+Shows static UPS system information and configuration. A maintenance
+expiration or next battery maintenance date in the past makes the service
+WARN ("Maintenance expired: ...", "Battery maintenance due: ...").
 
 | OID | Description | Example Value | Unit |
 |-----|-------------|---------------|------|
@@ -16,27 +18,43 @@ Shows static UPS system information and configuration.
 | .1.3.6.1.4.1.44782.1.4.4.1.2.0 | ups1equipmentManufacturer | "Others" | - |
 | .1.3.6.1.4.1.44782.1.4.1.5.0 | systemSerialNumber | "5A1903026810Q9100039" | - |
 | .1.3.6.1.4.1.44782.1.4.4.1.6.0 | ups1installationTime | "2020-06-13" | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.8.0 | ups1maintenanceExpirationTime | "2022-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.8.0 | ups1maintenanceExpirationTime | "2030-06-13" | - |
 | .1.3.6.1.4.1.44782.1.4.4.1.9.0 | ups1batteryInstallationReplacementTime | "2021-06-13" | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.10.0 | ups1nextMaintenanceTimeOfBattery | "2025-06-13" | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.10.0 | ups1nextMaintenanceTimeOfBattery | "2029-06-13" | - |
 | .1.3.6.1.4.1.44782.1.4.4.1.11.0 | ups1ratedPower | 5000 | W |
 | .1.3.6.1.4.1.44782.1.4.4.1.12.0 | ups1ratedCapacityOfBattery | 100 | Ah |
 | .1.3.6.1.4.1.44782.1.4.4.1.14.0 | ups1numberOfBatteries | 1 | - |
 | .1.3.6.1.4.1.44782.1.4.4.1.15.0 | ups1numberOfBatteriesInASingleGroup | 16 | - |
 
 ### Battery Status Service
-Monitors battery health, charge level, and runtime.
+Monitors battery status, time on battery and the battery alarm flags.
+
+| OID | Description | Example Value | Unit |
+|-----|-------------|---------------|------|
+| .1.3.6.1.2.1.33.1.2.1.0 | upsBatteryStatus | 2 (batteryNormal) | - |
+| .1.3.6.1.2.1.33.1.2.2.0 | upsSecondsOnBattery | 0 | seconds |
+| .1.3.6.1.4.1.44782.1.4.4.1.16.0 | ups1batteryStatus (enterprise, not evaluated) | 2 | - |
+| .1.3.6.1.4.1.44782.1.4.4.1.72.0 | ups1batteryAbnormal | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.73.0 | ups1batteryPowered | 0 | flag |
+| .1.3.6.1.4.1.44782.1.4.4.1.74.0 | ups1batteryLowVoltage | 0 | flag |
+
+upsBatteryStatus 2 (batteryNormal) is OK, 3 (batteryLow) and 4
+(batteryDepleted) make the service CRIT, any other value WARN.
+upsSecondsOnBattery above 0 makes it WARN. ups1batteryAbnormal or
+ups1batteryPowered at 1 makes it WARN, ups1batteryLowVoltage at 1 CRIT.
+The plugin fetches ups1batteryStatus, but no service evaluates it.
+
+### Battery Charge Service
 
 | OID | Description | Example Value | Unit | Thresholds |
 |-----|-------------|---------------|------|------------|
-| .1.3.6.1.2.1.33.1.2.1.0 | upsBatteryStatus | 2 (batteryNormal) | - | - |
-| .1.3.6.1.2.1.33.1.2.2.0 | upsSecondsOnBattery | 0 | seconds | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.16.0 | ups1batteryStatus (enterprise) | 2 | - | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.17.0 | ups1batteryTimeRemaining | 15 | minutes → seconds | WARN: 600s, CRIT: 300s |
 | .1.3.6.1.4.1.44782.1.4.4.1.18.0 | ups1remainingCapacityOfBattery | 100 | % | WARN: 20%, CRIT: 10% |
-| .1.3.6.1.4.1.44782.1.4.4.1.72.0 | ups1batteryAbnormal | 0 | flag | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.73.0 | ups1batteryPowered | 0 | flag | - |
-| .1.3.6.1.4.1.44782.1.4.4.1.74.0 | ups1batteryLowVoltage | 0 | flag | - |
+
+### Battery Runtime Service
+
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.4.4.1.17.0 | ups1batteryTimeRemaining | 15 | minutes → seconds | WARN: 600s, CRIT: 300s |
 
 ### Power Status Service  
 Monitors power source, operational mode, and power failures.
@@ -113,7 +131,7 @@ service WARN and 3 makes it CRIT.
 |-----|-------------|---------------|------|
 | .1.3.6.1.4.1.44782.1.4.4.1.45.0 | ups1outputUPhaseCurrent | 0.00 | A |
 
-#### Temperature Service
+#### Battery Temperature Service
 | OID | Description | Example Value | Unit | Thresholds |
 |-----|-------------|---------------|------|------------|
 | .1.3.6.1.4.1.44782.1.4.4.1.21.0 | ups1batteryTemperature | 28.0 | °C | WARN: 40°C/10°C, CRIT: 45°C/5°C |
@@ -141,11 +159,21 @@ service WARN and 3 makes it CRIT.
 #### Output Load Service
 | OID | Description | Example Value | Unit | Thresholds |
 |-----|-------------|---------------|------|------------|
-| .1.3.6.1.4.1.44782.1.4.4.1.51.0 | ups1outputUPhaseLoadRate | 0.0 | % | WARN: 80%, CRIT: 90%
+| .1.3.6.1.4.1.44782.1.4.4.1.51.0 | ups1outputUPhaseLoadRate | 0.0 | % | WARN: 80%, CRIT: 90% |
 
-## Configuration OIDs (Used for Dynamic Defaults)
+#### Environment Service
+Appears only with a THS sensor. The card sends the values in tenths.
 
-The device provides configuration thresholds that the plugin uses as dynamic defaults when available:
+| OID | Description | Example Value | Unit | Thresholds |
+|-----|-------------|---------------|------|------------|
+| .1.3.6.1.4.1.44782.1.2.1.1.1.0 | thsOneTempData | 243 | 0.1 °C → °C | WARN: 35°C/10°C, CRIT: 40°C/5°C |
+| .1.3.6.1.4.1.44782.1.2.1.1.2.0 | thsOneHumiData | 456 | 0.1 % → % | WARN: 70%/20%, CRIT: 80%/10% |
+
+## Configuration OIDs
+
+The device provides configuration thresholds, and the plugin fetches them.
+They do not change the levels at present: the default levels of the
+"OPOSS Wiseways UPS" rule always apply.
 
 | OID | Description | Example Value | Used In Service |
 |-----|-------------|---------------|-----------------|
@@ -161,8 +189,10 @@ The device provides configuration thresholds that the plugin uses as dynamic def
 
 The plugin performs the following conversions:
 
-- **Enterprise string values**: Parsed as floats (e.g., "231.9" → 231.9)
+- **Enterprise string values**: Parsed as floats, for example "231.9" → 231.9; a comma is accepted as decimal separator
 - **Minutes to seconds**: Battery runtime converted for consistent time metrics
+- **Tenths**: THS sensor values, for example 243 → 24.3 °C
+- **No value**: -99998 means the UPS has no value; the measurement services go UNKNOWN with "... data not available", and an empty value or -99998 counts as no THS sensor
 - **Status mappings**: Integer values mapped to descriptive strings
 - **Alarm flags**: 0/1 values interpreted as normal/alarm states
 
@@ -209,10 +239,10 @@ The plugin performs the following conversions:
 
 ## Service Summary
 
-The plugin creates 18 CheckMK services:
+The plugin creates 19 CheckMK services:
 
 1. **UPS System Info** - Static information and configuration
-2. **UPS Battery Status** - Combined battery health, charge, runtime, and alarms
+2. **UPS Battery Status** - Battery status, time on battery and battery alarms
 3. **UPS Battery Charge** - Individual battery charge percentage monitoring
 4. **UPS Battery Runtime** - Individual battery runtime remaining monitoring
 5. **UPS Power Status** - Power source and operational mode
@@ -223,17 +253,17 @@ The plugin creates 18 CheckMK services:
 10. **UPS Battery Voltage** - DC battery voltage monitoring
 11. **UPS Battery Current** - Battery charging/discharging current
 12. **UPS Output Current** - Output current monitoring
-13. **UPS Temperature** - System temperature monitoring
+13. **UPS Battery Temperature** - Battery temperature monitoring
 14. **UPS Input Frequency** - Input frequency monitoring
 15. **UPS Output Frequency** - Output frequency monitoring
 16. **UPS Bypass Frequency** - Bypass frequency monitoring
 17. **UPS Output Power** - Power consumption in watts
 18. **UPS Output Load** - Load percentage monitoring
+19. **UPS Environment** - THS sensor temperature and humidity
 
 ## Notes
 
-- The plugin uses enterprise OIDs (44782) as primary data source with RFC 1628 OIDs as fallback
+- Each value comes from the one OID listed for it; there is no fallback between the enterprise OIDs (44782) and RFC 1628
 - All time metrics are stored in seconds (SI base unit)
-- Thresholds can be customized via CheckMK WATO interface
-- Device configuration values are used as dynamic defaults when available
+- Thresholds can be customized with the rule "OPOSS Wiseways UPS" under Setup > Services > Service monitoring rules
 - Model identified as Wiseway UPS with various capacity ratings (6000VA, 10kVA)

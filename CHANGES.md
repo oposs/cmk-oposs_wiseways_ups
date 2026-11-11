@@ -10,8 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 ### Changed
+- All metrics of the UPS services now start with `oposs_wiseways_ups_`,
+  for example `oposs_wiseways_ups_input_voltage`, and the battery
+  temperature metric is `oposs_wiseways_ups_battery_temperature`, so the
+  plugin keeps working on Checkmk 3.0, which refuses metric names that
+  clash with built-in ones. The graphs show the history recorded under the
+  old names; custom graphs, dashboards or exports that name the old
+  metrics must be updated.
 
 ### Fixed
+- The rule field "Battery voltage upper levels" now prefills 235/240 V instead of 220/230 V, which warned during normal float charge and went CRIT during boost charge.
+- "UPS Environment" took a THS sensor reading of 0.0 °C or below as "no
+  sensor": the temperature was left out of the service, which then showed
+  only the humidity, or "No environmental sensor data" when the humidity
+  read 0 % as well. A temperature of 0 °C or frost, and a humidity of 0 %,
+  are now shown and checked against the levels; only an empty value or
+  -99998 counts as no sensor.
+- "UPS Battery Current", "UPS Output Current" and "UPS Output Power" were
+  missing on a UPS that ran on mains without load during the service
+  discovery, because they appeared only while the reading was not 0. They
+  are now discovered whenever the UPS sends a number, 0 included; a reading
+  of -99998 or text such as "N/A" no longer creates "UPS Battery Current",
+  which then went UNKNOWN.
+- "UPS Battery Voltage" did not warn when the battery voltage sank: the
+  default lower levels were 32/30 V, while the battery string of these UPS
+  floats at about 218 V. The defaults and the prefill of the "Battery
+  voltage lower levels" rule field are now 180/170 V, so a discharging
+  battery shows WARN below 180 V and CRIT below 170 V.
 
 ## 0.5.0 - 2026-11-08
 ### New

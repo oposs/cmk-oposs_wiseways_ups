@@ -95,6 +95,24 @@ def _unreadable(section: dict[str, Any], key: str, label: str) -> Result | None:
     return Result(state=State.UNKNOWN, summary=f"{label}: cannot read {raw!r} as a number")
 
 
+def _is_no_value(raw: str) -> bool:
+    """The UPS sends -99998 for 'no value', before any scaling"""
+    try:
+        return float(raw.replace(",", ".")) == NO_VALUE
+    except ValueError:
+        return False
+
+
+def _has_reading(section: dict[str, Any], key: str) -> bool:
+    """True when the UPS sent a number for key: not empty, not text, not the
+    'no value' marker. 0 and negative values are readings."""
+    return (
+        key in section
+        and key not in section.get("_no_reading", ())
+        and key not in section.get("_unreadable", {})
+    )
+
+
 # Value mappers
 BATTERY_STATUS_MAP = {
     "1": "unknown",
@@ -316,6 +334,9 @@ def parse_oposs_wiseways_ups(string_table):
                         converted = parsed[oid_def.output_key]
                         if isinstance(converted, float) and math.isnan(converted):
                             parsed.setdefault("_unreadable", {})[oid_def.output_key] = value
+                        # parse_tenths turns -99998 into -9999.8, so look at the text
+                        if _is_no_value(value):
+                            parsed.setdefault("_no_reading", set()).add(oid_def.output_key)
                     except (ValueError, TypeError):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
@@ -329,6 +350,8 @@ def parse_oposs_wiseways_ups(string_table):
                 else:
                     parsed[oid_def.output_key] = value
             else:
+                # Keep track of what came empty: 0.0 below is no reading
+                parsed.setdefault("_no_reading", set()).add(oid_def.output_key)
                 # Set defaults for empty values
                 if oid_def.mapper:
                     parsed[oid_def.output_key] = "unknown"
@@ -400,7 +423,7 @@ def check_oposs_wiseways_ups_input_voltage(
         voltage,
         levels_upper=params.get("input_voltage_upper", default_levels_upper),
         levels_lower=params.get("input_voltage_lower", default_levels_lower),
-        metric_name="input_voltage",
+        metric_name="oposs_wiseways_ups_input_voltage",
         label="Input voltage",
         render_func=lambda v: f"{v:.1f}V",
     )
@@ -458,7 +481,7 @@ def check_oposs_wiseways_ups_output_voltage(
         voltage,
         levels_upper=params.get("output_voltage_upper", default_levels_upper),
         levels_lower=params.get("output_voltage_lower", default_levels_lower),
-        metric_name="output_voltage",
+        metric_name="oposs_wiseways_ups_output_voltage",
         label="Output voltage",
         render_func=lambda v: f"{v:.1f}V",
     )
@@ -505,7 +528,7 @@ def check_oposs_wiseways_ups_bypass_voltage(
         voltage,
         levels_upper=params.get("bypass_voltage_upper"),
         levels_lower=params.get("bypass_voltage_lower"),
-        metric_name="bypass_voltage",
+        metric_name="oposs_wiseways_ups_bypass_voltage",
         label="Bypass voltage",
         render_func=lambda v: f"{v:.1f}V",
     )
@@ -554,13 +577,13 @@ def check_oposs_wiseways_ups_battery_voltage(
     if device_lower > 0:
         default_levels_lower = ("fixed", (device_lower, device_lower - 2))
     else:
-        default_levels_lower = ("fixed", (32.0, 30.0))
+        default_levels_lower = ("fixed", (180.0, 170.0))
     
     yield from check_levels(
         voltage,
         levels_upper=params.get("battery_voltage_upper"),
         levels_lower=params.get("battery_voltage_lower", default_levels_lower),
-        metric_name="battery_voltage",
+        metric_name="oposs_wiseways_ups_battery_voltage",
         label="Battery voltage",
         render_func=lambda v: f"{v:.1f}V",
     )
@@ -574,15 +597,14 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
     check_function=check_oposs_wiseways_ups_battery_voltage,
     check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
-        "battery_voltage_lower": ("fixed", (32.0, 30.0)),
+        "battery_voltage_lower": ("fixed", (180.0, 170.0)),
     },
 )
 
 
 # Check plugin for UPS Battery Current
 def discover_oposs_wiseways_ups_battery_current(section: dict[str, Any]) -> DiscoveryResult:
-    current = section.get("battery_current", 0)
-    if section and current != 0:
+    if section and _has_reading(section, "battery_current"):
         yield Service()
 
 
@@ -604,9 +626,9 @@ def check_oposs_wiseways_ups_battery_current(
         return
     if current == 0:
         yield Result(state=State.OK, summary="No current flow")
-        yield Metric("battery_current", 0)
+        yield Metric("oposs_wiseways_ups_battery_current", 0)
     else:
-        yield Metric("battery_current", abs(current))
+        yield Metric("oposs_wiseways_ups_battery_current", abs(current))
         if current > 0:
             yield Result(state=State.OK, summary=f"Charging: {current:.1f}A")
         else:
@@ -624,7 +646,7 @@ check_plugin_oposs_wiseways_ups_battery_current = CheckPlugin(
 
 # Check plugin for UPS Output Current
 def discover_oposs_wiseways_ups_output_current(section: dict[str, Any]) -> DiscoveryResult:
-    if section and section.get("output_current", 0) > 0:
+    if section and _has_reading(section, "output_current"):
         yield Service()
 
 
@@ -648,7 +670,7 @@ def check_oposs_wiseways_ups_output_current(
     yield from check_levels(
         current,
         levels_upper=params.get("output_current_upper"),
-        metric_name="output_current",
+        metric_name="oposs_wiseways_ups_output_current",
         label="Output current",
         render_func=lambda v: f"{v:.1f}A",
     )
@@ -700,7 +722,7 @@ def check_oposs_wiseways_ups_temperature(
         temperature,
         levels_upper=params.get("temp_upper", default_levels_upper),
         levels_lower=params.get("temp_lower", ("fixed", (10.0, 5.0))),
-        metric_name="temperature",
+        metric_name="oposs_wiseways_ups_battery_temperature",
         label="Temperature",
         render_func=lambda v: f"{v:.1f}°C",
     )
@@ -747,7 +769,7 @@ def check_oposs_wiseways_ups_input_frequency(
         frequency,
         levels_upper=params.get("frequency_upper", ("fixed", (51.0, 52.0))),
         levels_lower=params.get("frequency_lower", ("fixed", (49.0, 48.0))),
-        metric_name="input_frequency",
+        metric_name="oposs_wiseways_ups_input_frequency",
         label="Input frequency",
         render_func=lambda v: f"{v:.1f} Hz",
     )
@@ -794,7 +816,7 @@ def check_oposs_wiseways_ups_output_frequency(
         frequency,
         levels_upper=params.get("frequency_upper", ("fixed", (51.0, 52.0))),
         levels_lower=params.get("frequency_lower", ("fixed", (49.0, 48.0))),
-        metric_name="output_frequency",
+        metric_name="oposs_wiseways_ups_output_frequency",
         label="Output frequency",
         render_func=lambda v: f"{v:.1f} Hz",
     )
@@ -841,7 +863,7 @@ def check_oposs_wiseways_ups_bypass_frequency(
         frequency,
         levels_upper=params.get("frequency_upper", ("fixed", (51.0, 52.0))),
         levels_lower=params.get("frequency_lower", ("fixed", (49.0, 48.0))),
-        metric_name="bypass_frequency",
+        metric_name="oposs_wiseways_ups_bypass_frequency",
         label="Bypass frequency",
         render_func=lambda v: f"{v:.1f} Hz",
     )
@@ -863,7 +885,7 @@ check_plugin_oposs_wiseways_ups_bypass_frequency = CheckPlugin(
 
 # Check plugin for UPS Output Power
 def discover_oposs_wiseways_ups_output_power(section: dict[str, Any]) -> DiscoveryResult:
-    if section and section.get("output_power_watts", 0) > 0:
+    if section and _has_reading(section, "output_power_watts"):
         yield Service()
 
 
@@ -887,7 +909,7 @@ def check_oposs_wiseways_ups_output_power(
     yield from check_levels(
         power,
         levels_upper=params.get("power_upper"),
-        metric_name="output_power",
+        metric_name="oposs_wiseways_ups_output_power",
         label="Output power",
         render_func=lambda v: f"{v:.0f}W",
     )
@@ -938,7 +960,7 @@ def check_oposs_wiseways_ups_output_load(
     yield from check_levels(
         load,
         levels_upper=params.get("load_upper", default_levels_upper),
-        metric_name="output_load",
+        metric_name="oposs_wiseways_ups_output_load",
         label="Load",
         render_func=render.percent,
         boundaries=(0, 100),
@@ -982,12 +1004,12 @@ def check_oposs_wiseways_ups_battery_charge(
         return
     if charge_percent <= 0:
         yield Result(state=State.UNKNOWN, summary="Charge data not available")
-        yield Metric("battery_charge", float('nan'))
+        yield Metric("oposs_wiseways_ups_battery_charge", float('nan'))
     else:
         yield from check_levels(
             charge_percent,
             levels_lower=params.get("battery_charge_lower"),
-            metric_name="battery_charge",
+            metric_name="oposs_wiseways_ups_battery_charge",
             label="Battery charge",
             render_func=render.percent,
             boundaries=(0, 100),
@@ -1027,12 +1049,12 @@ def check_oposs_wiseways_ups_battery_runtime(
         return
     if runtime <= 0:
         yield Result(state=State.UNKNOWN, summary="Runtime data not available")
-        yield Metric("battery_runtime", float('nan'))
+        yield Metric("oposs_wiseways_ups_battery_runtime", float('nan'))
     else:
         yield from check_levels(
             runtime,
             levels_lower=params.get("battery_runtime_lower"),
-            metric_name="battery_runtime",
+            metric_name="oposs_wiseways_ups_battery_runtime",
             label="Battery runtime",
             render_func=render.timespan,
         )
@@ -1080,7 +1102,7 @@ def check_oposs_wiseways_ups_battery_status(section: dict[str, Any]) -> CheckRes
     time_on_battery = section.get("seconds_on_battery", 0)
     if time_on_battery > 0:
         yield Result(state=State.WARN, summary=f"On battery: {render.timespan(time_on_battery)}")
-    yield Metric("time_on_battery", time_on_battery)
+    yield Metric("oposs_wiseways_ups_time_on_battery", time_on_battery)
     
     # Alarm flags
     alarms = []
@@ -1151,7 +1173,7 @@ def check_oposs_wiseways_ups_power_status(
     line_bads = section.get("input_line_bads", 0)
     if line_bads > 0:
         yield Result(state=State.WARN, summary=f"Input line failures: {line_bads}")
-    yield Metric("input_line_bads", line_bads)
+    yield Metric("oposs_wiseways_ups_input_line_bads", line_bads)
     
     # Alarm flags
     if section.get("input_abnormal", 0) == 1:
@@ -1352,9 +1374,8 @@ check_plugin_oposs_wiseways_ups_system_info = CheckPlugin(
 # Check plugin for UPS Environment (THS sensor)
 def discover_oposs_wiseways_ups_environment(section: dict[str, Any]) -> DiscoveryResult:
     # Discover only if environmental sensor data is present
-    env_temp = section.get("env_temperature", 0)
-    env_humi = section.get("env_humidity", 0)
-    if section and (env_temp > 0 or env_humi > 0):
+    if section and (_has_reading(section, "env_temperature")
+                    or _has_reading(section, "env_humidity")):
         yield Service()
 
 
@@ -1368,8 +1389,11 @@ def check_oposs_wiseways_ups_environment(
     env_temp = section.get("env_temperature", 0)
     env_humi = section.get("env_humidity", 0)
 
-    # Check if sensor data is available
-    if env_temp <= 0 and env_humi <= 0:
+    # Without a sensor both values are empty or -99998; 0 and frost are readings
+    has_temp = _has_reading(section, "env_temperature")
+    has_humi = _has_reading(section, "env_humidity")
+    unreadable = section.get("_unreadable", {})
+    if not (has_temp or has_humi or "env_temperature" in unreadable or "env_humidity" in unreadable):
         yield Result(state=State.UNKNOWN, summary="No environmental sensor data")
         return
 
@@ -1377,12 +1401,12 @@ def check_oposs_wiseways_ups_environment(
     unreadable_temp = _unreadable(section, "env_temperature", "Temperature")
     if unreadable_temp:
         yield unreadable_temp
-    elif env_temp > 0:
+    elif has_temp:
         yield from check_levels(
             env_temp,
             levels_upper=params.get("env_temp_upper", ("fixed", (35.0, 40.0))),
             levels_lower=params.get("env_temp_lower", ("fixed", (10.0, 5.0))),
-            metric_name="env_temperature",
+            metric_name="oposs_wiseways_ups_env_temperature",
             label="Temperature",
             render_func=lambda v: f"{v:.1f}°C",
         )
@@ -1391,12 +1415,12 @@ def check_oposs_wiseways_ups_environment(
     unreadable_humi = _unreadable(section, "env_humidity", "Humidity")
     if unreadable_humi:
         yield unreadable_humi
-    elif env_humi > 0:
+    elif has_humi:
         yield from check_levels(
             env_humi,
             levels_upper=params.get("env_humidity_upper", ("fixed", (70.0, 80.0))),
             levels_lower=params.get("env_humidity_lower", ("fixed", (20.0, 10.0))),
-            metric_name="env_humidity",
+            metric_name="oposs_wiseways_ups_env_humidity",
             label="Humidity",
             render_func=lambda v: f"{v:.0f}%",
             boundaries=(0, 100),

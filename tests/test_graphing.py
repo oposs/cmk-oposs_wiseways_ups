@@ -6,7 +6,7 @@ import sys
 
 import pytest
 from cmk.agent_based.v2 import CheckPlugin, Metric, SimpleSNMPSection
-from cmk.graphing.v1 import graphs, metrics, perfometers
+from cmk.graphing.v1 import graphs, metrics, perfometers, translations
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "local/lib/python3/cmk_addons/plugins/oposs_wiseways_ups"
@@ -124,3 +124,57 @@ def test_combined_graph_is_drawn_in_one_service(graphing_objects, emitted, name)
     separate services, so no service ever carries all their metrics."""
     (graph,) = [o for o in graphing_objects if isinstance(o, graphs.Graph) and o.name == name]
     assert _drawable(graph, emitted)
+
+
+# Metric names up to 0.5.0, and the names the checks emit since.
+RENAMED = {
+    "battery_charge": "oposs_wiseways_ups_battery_charge",
+    "battery_runtime": "oposs_wiseways_ups_battery_runtime",
+    "battery_voltage": "oposs_wiseways_ups_battery_voltage",
+    "battery_current": "oposs_wiseways_ups_battery_current",
+    "temperature": "oposs_wiseways_ups_battery_temperature",
+    "env_temperature": "oposs_wiseways_ups_env_temperature",
+    "env_humidity": "oposs_wiseways_ups_env_humidity",
+    "input_voltage": "oposs_wiseways_ups_input_voltage",
+    "output_voltage": "oposs_wiseways_ups_output_voltage",
+    "bypass_voltage": "oposs_wiseways_ups_bypass_voltage",
+    "input_frequency": "oposs_wiseways_ups_input_frequency",
+    "output_frequency": "oposs_wiseways_ups_output_frequency",
+    "bypass_frequency": "oposs_wiseways_ups_bypass_frequency",
+    "output_load": "oposs_wiseways_ups_output_load",
+    "output_power": "oposs_wiseways_ups_output_power",
+    "output_current": "oposs_wiseways_ups_output_current",
+    "input_line_bads": "oposs_wiseways_ups_input_line_bads",
+    "time_on_battery": "oposs_wiseways_ups_time_on_battery",
+}
+
+
+def test_every_emitted_metric_is_prefixed(emitted):
+    """Checkmk 3.0 refuses plugin metrics that reuse a built-in name; the
+    prefix keeps these apart from the built-in battery_charge, temperature,
+    input_voltage and the like."""
+    names = set().union(*emitted.values())
+    assert names == set(RENAMED.values())
+    for name in names:
+        assert name.startswith("oposs_wiseways_ups_"), name
+
+
+def test_no_perfometer_is_named_like_a_metric(graphing_objects, declared):
+    for obj in graphing_objects:
+        if isinstance(obj, perfometers.Perfometer):
+            assert obj.name not in declared | set(RENAMED), obj.name
+
+
+def test_translations_keep_the_history_of_the_old_names(check, graphing_objects, emitted):
+    """The RRDs of 0.5.0 and earlier hold the old names; every check that
+    emitted one translates it to the new name."""
+    found = [o for o in graphing_objects if isinstance(o, translations.Translation)]
+    assert len(found) == 1
+    (translation,) = found
+    assert translation.translations == {
+        old: translations.RenameTo(new) for old, new in RENAMED.items()}
+    plugins = {v.service_name: v for v in vars(check).values() if isinstance(v, CheckPlugin)}
+    emitting = {plugins[service].name for service, names in emitted.items() if names}
+    assert len(emitting) == 17
+    assert set(translation.check_commands) == {
+        translations.PassiveCheck(name) for name in emitting}

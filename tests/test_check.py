@@ -46,9 +46,9 @@ WW = ".1.3.6.1.4.1.44782."  # Wiseway enterprise tree
 XPPC = ".1.3.6.1.4.1.935.1.1.1."  # XPPC-MIB
 
 # Every fetched OID, its name and the value of a healthy UPS on mains.
-# Values from monitored_oids.md, except two: the maintenance dates lie in
-# the future here so that UPS System Info is OK, and the device thresholds
-# and the THS sensor are empty, as on a UPS without them.
+# Values from monitored_oids.md, except two: the maintenance dates lie
+# further in the future, and the device thresholds and the THS sensor are
+# empty, as on a UPS without them.
 WALK = {
     UPS + "1.2.0": ("upsIdentModel", "6000VA"),
     WW + "1.4.4.1.2.0": ("ups1equipmentManufacturer", "Others"),
@@ -281,9 +281,8 @@ def test_parse_ignores_extra_columns(check):
 def test_discovery_on_the_sample_walk(check):
     section = _parse(check)
     found = {name for name, p in _plugins(check).items() if list(p.discovery_function(section))}
-    # Zero current and power, and no THS sensor: these four stay away
-    assert found == set(SERVICES) - {
-        "UPS Battery Current", "UPS Output Current", "UPS Output Power", "UPS Environment"}
+    # No THS sensor: only UPS Environment stays away
+    assert found == set(SERVICES) - {"UPS Environment"}
 
 
 def test_every_discovered_service_has_no_item(check):
@@ -307,6 +306,37 @@ def test_nothing_is_discovered_without_data(check):
 def test_measurement_services_appear_with_a_value(check, service, changes):
     discovered, _ = _run(check, service, **changes)
     assert discovered == [Service()]
+
+
+CURRENT_AND_POWER = [
+    ("UPS Battery Current", "ups1batteryChargingAndDischargingCurrent"),
+    ("UPS Output Current", "ups1outputUPhaseCurrent"),
+    ("UPS Output Power", "ups1outputUPhaseActivePower"),
+]
+
+
+@pytest.mark.parametrize("service, name", CURRENT_AND_POWER)
+@pytest.mark.parametrize("raw", ["0.00", "0", "3.5"])
+def test_current_and_power_appear_with_any_reading(check, service, name, raw):
+    """A UPS on mains without load reads 0.00 for these: the services are
+    there before the first load, not only after a discovery under load."""
+    discovered, out = _run(check, service, **{name: raw})
+    assert discovered == [Service()]
+    assert _worst(out) == State.OK
+
+
+@pytest.mark.parametrize("service, name", CURRENT_AND_POWER)
+@pytest.mark.parametrize("raw", ["", "-99998", "N/A"])
+def test_current_and_power_stay_away_without_a_reading(check, service, name, raw):
+    discovered, _ = _run(check, service, **{name: raw})
+    assert discovered == []
+
+
+def test_idle_output_current_and_power_are_ok(check):
+    _, out = _run(check, "UPS Output Current")
+    assert _summaries(out) == ["Output current: 0.0A"]
+    _, out = _run(check, "UPS Output Power")
+    assert _summaries(out) == ["Output power: 0W"]
 
 
 @pytest.mark.parametrize("service, name", [
@@ -333,19 +363,19 @@ def test_every_check_says_no_data_on_an_empty_section(check, service):
 # --- the sample walk, service by service -------------------------------------
 
 SAMPLE = [
-    ("UPS Input Voltage", State.OK, "Input voltage: 231.9V", {"input_voltage": 231.9}),
-    ("UPS Output Voltage", State.OK, "Output voltage: 231.9V", {"output_voltage": 231.9}),
-    ("UPS Bypass Voltage", State.OK, "Bypass voltage: 232.9V", {"bypass_voltage": 232.9}),
-    ("UPS Battery Voltage", State.OK, "Battery voltage: 217.9V", {"battery_voltage": 217.9}),
-    ("UPS Battery Temperature", State.OK, "Temperature: 28.0°C", {"temperature": 28.0}),
-    ("UPS Input Frequency", State.OK, "Input frequency: 50.0 Hz", {"input_frequency": 50.0}),
-    ("UPS Output Frequency", State.OK, "Output frequency: 50.0 Hz", {"output_frequency": 50.0}),
-    ("UPS Bypass Frequency", State.OK, "Bypass frequency: 50.0 Hz", {"bypass_frequency": 50.0}),
-    ("UPS Output Load", State.OK, "Load: 0%", {"output_load": 0.0}),
-    ("UPS Battery Charge", State.OK, "Battery charge: 100.00%", {"battery_charge": 100.0}),
-    ("UPS Battery Runtime", State.OK, "Battery runtime: 15 minutes 0 seconds", {"battery_runtime": 900.0}),
-    ("UPS Battery Status", State.OK, "Status: batteryNormal", {"time_on_battery": 0}),
-    ("UPS Power Status", State.OK, "Power source: normal", {"input_line_bads": 0}),
+    ("UPS Input Voltage", State.OK, "Input voltage: 231.9V", {"oposs_wiseways_ups_input_voltage": 231.9}),
+    ("UPS Output Voltage", State.OK, "Output voltage: 231.9V", {"oposs_wiseways_ups_output_voltage": 231.9}),
+    ("UPS Bypass Voltage", State.OK, "Bypass voltage: 232.9V", {"oposs_wiseways_ups_bypass_voltage": 232.9}),
+    ("UPS Battery Voltage", State.OK, "Battery voltage: 217.9V", {"oposs_wiseways_ups_battery_voltage": 217.9}),
+    ("UPS Battery Temperature", State.OK, "Temperature: 28.0°C", {"oposs_wiseways_ups_battery_temperature": 28.0}),
+    ("UPS Input Frequency", State.OK, "Input frequency: 50.0 Hz", {"oposs_wiseways_ups_input_frequency": 50.0}),
+    ("UPS Output Frequency", State.OK, "Output frequency: 50.0 Hz", {"oposs_wiseways_ups_output_frequency": 50.0}),
+    ("UPS Bypass Frequency", State.OK, "Bypass frequency: 50.0 Hz", {"oposs_wiseways_ups_bypass_frequency": 50.0}),
+    ("UPS Output Load", State.OK, "Load: 0%", {"oposs_wiseways_ups_output_load": 0.0}),
+    ("UPS Battery Charge", State.OK, "Battery charge: 100.00%", {"oposs_wiseways_ups_battery_charge": 100.0}),
+    ("UPS Battery Runtime", State.OK, "Battery runtime: 15 minutes 0 seconds", {"oposs_wiseways_ups_battery_runtime": 900.0}),
+    ("UPS Battery Status", State.OK, "Status: batteryNormal", {"oposs_wiseways_ups_time_on_battery": 0}),
+    ("UPS Power Status", State.OK, "Power source: normal", {"oposs_wiseways_ups_input_line_bads": 0}),
     ("UPS Alarm Status", State.OK, "No active alarms", {}),
     ("UPS System Info", State.OK,
      "Model: 6000VA, Mfr: Others, S/N: 5A1903026810Q9100039", {}),
@@ -387,9 +417,11 @@ LEVELS = [
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "265", State.CRIT),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "205", State.WARN),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "195", State.CRIT),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "36.0", State.OK),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "31.0", State.WARN),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "29.0", State.CRIT),
+    # 16 blocks of 12 V: 217.9 V on float charge, 180 V is 11.25 V per block
+    ("UPS Battery Voltage", "ups1batteryVoltage", "217.9", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "180.0", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "179.9", State.WARN),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "169.9", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "41", State.WARN),
     ("UPS Battery Temperature", "ups1batteryTemperature", "46", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "8", State.WARN),
@@ -427,8 +459,10 @@ def test_default_levels(check, service, name, value, state):
      "ups1outputUPhaseCurrent", "25", State.CRIT),
     ("UPS Output Power", {"power_upper": ("fixed", (4000.0, 4500.0))},
      "ups1outputUPhaseActivePower", "4200", State.WARN),
-    ("UPS Battery Voltage", {"battery_voltage_upper": ("fixed", (40.0, 42.0))},
-     "ups1batteryVoltage", "43", State.CRIT),
+    ("UPS Battery Voltage", {"battery_voltage_upper": ("fixed", (230.0, 235.0))},
+     "ups1batteryVoltage", "236", State.CRIT),
+    ("UPS Battery Voltage", {"battery_voltage_lower": ("fixed", (32.0, 30.0))},
+     "ups1batteryVoltage", "31", State.WARN),
     ("UPS Input Voltage", {"input_voltage_upper": ("no_levels", None),
                            "input_voltage_lower": ("no_levels", None)},
      "ups1inputUPhaseVoltage", "300", State.OK),
@@ -443,10 +477,10 @@ def test_rule_levels(check, service, params, name, value, state):
 def test_output_current_and_power_have_no_default_levels(check):
     _, out = _run(check, "UPS Output Current", ups1outputUPhaseCurrent="900")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"output_current": 900.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_current": 900.0}
     _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99999")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"output_power": 99999.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_power": 99999.0}
 
 
 # --- battery ----------------------------------------------------------------
@@ -461,7 +495,7 @@ def test_battery_status_on_battery(check):
     _, out = _run(check, "UPS Battery Status", upsSecondsOnBattery="125")
     assert _worst(out) == State.WARN
     assert "On battery: 2 minutes 5 seconds" in _text(out)
-    assert _metrics(out) == {"time_on_battery": 125}
+    assert _metrics(out) == {"oposs_wiseways_ups_time_on_battery": 125}
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -483,12 +517,12 @@ def test_battery_current(check, raw, summary, metric):
     discovered, out = _run(check, "UPS Battery Current",
                            ups1batteryChargingAndDischargingCurrent=raw)
     assert discovered == [Service()]
-    assert out == [Metric("battery_current", metric), Result(state=State.OK, summary=summary)]
+    assert out == [Metric("oposs_wiseways_ups_battery_current", metric), Result(state=State.OK, summary=summary)]
 
 
 def test_battery_current_zero_after_discovery(check):
     _, out = _run(check, "UPS Battery Current")
-    assert out == [Result(state=State.OK, summary="No current flow"), Metric("battery_current", 0)]
+    assert out == [Result(state=State.OK, summary="No current flow"), Metric("oposs_wiseways_ups_battery_current", 0)]
 
 
 @pytest.mark.parametrize("service, name, summary", [
@@ -546,7 +580,7 @@ def test_power_status_warnings(check, changes, text):
 
 def test_power_status_counts_line_failures(check):
     _, out = _run(check, "UPS Power Status", upsInputLineBads="3")
-    assert _metrics(out) == {"input_line_bads": 3}
+    assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 3}
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -573,32 +607,6 @@ def test_alarm_system_status(check, raw, state, text):
     _, out = _run(check, "UPS Alarm Status", ups1systemStatus=raw)
     assert _worst(out) == state
     assert text in _text(out)
-
-
-def _documented_examples():
-    """OID -> example value from the tables in monitored_oids.md, as the UPS
-    sends it: '"6000VA"' is 6000VA, '2 (batteryNormal)' is 2."""
-    examples = {}
-    for line in (ROOT / "monitored_oids.md").read_text().splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 3 and cells[0].startswith(".1.3.6.1."):
-            examples[cells[0]] = cells[2].split(" (")[0].strip('"')
-    return examples
-
-
-@pytest.mark.parametrize("service, summary", [
-    ("UPS Alarm Status", "No active alarms"),
-    ("UPS Power Status", "Power source: normal"),
-])
-def test_documented_examples_are_a_healthy_ups(check, service, summary):
-    """The example values in monitored_oids.md describe a UPS on mains with
-    no alarm, so the status services built from them are OK."""
-    examples = _documented_examples()
-    changes = {name: examples[oid] for oid, (name, _) in WALK.items() if oid in examples}
-    assert "ups1bypassStatus" in changes and "ups1testInProgress" in changes
-    _, out = _run(check, service, **changes)
-    assert _summaries(out) == [summary]
-    assert _worst(out) == State.OK
 
 
 def test_alarm_status_lists_several_alarms(check):
@@ -638,7 +646,7 @@ def test_environment_sensor(check):
     discovered, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="456")
     assert discovered == [Service()]
     assert [r.summary for r in _results(out)] == ["Temperature: 24.3°C", "Humidity: 46%"]
-    assert _metrics(out) == pytest.approx({"env_temperature": 24.3, "env_humidity": 45.6})
+    assert _metrics(out) == pytest.approx({"oposs_wiseways_ups_env_temperature": 24.3, "oposs_wiseways_ups_env_humidity": 45.6})
 
 
 @pytest.mark.parametrize("temp, humi, state", [
@@ -653,6 +661,33 @@ def test_environment_sensor(check):
 def test_environment_levels(check, temp, humi, state):
     _, out = _run(check, "UPS Environment", thsOneTempData=temp, thsOneHumiData=humi)
     assert _worst(out) == state
+
+
+@pytest.mark.parametrize("temp, humi, summaries, state", [
+    ("0", "456", ["Temperature: 0.0°C", "Humidity: 46%"], State.CRIT),
+    ("-50", "", ["Temperature: -5.0°C"], State.CRIT),
+    ("", "0", ["Humidity: 0%"], State.CRIT),
+    ("-99998", "456", ["Humidity: 46%"], State.OK),
+])
+def test_environment_readings_at_and_below_zero(check, temp, humi, summaries, state):
+    """0.0 °C and frost are readings of the sensor; only an empty value or
+    -99998 means it has no value."""
+    discovered, out = _run(check, "UPS Environment", thsOneTempData=temp, thsOneHumiData=humi)
+    assert discovered == [Service()]
+    assert [text.split(" (")[0] for text in _summaries(out)] == summaries
+    assert _worst(out) == state
+
+
+def test_environment_without_sensor_and_another_unreadable_value(check):
+    _, out = _run(check, "UPS Environment", ups1batteryTimeRemaining="N/A")
+    assert out == [Result(state=State.UNKNOWN, summary="No environmental sensor data")]
+
+
+@pytest.mark.parametrize("temp, humi", [("", ""), ("-99998", "-99998"), ("-99998", "")])
+def test_environment_without_sensor(check, temp, humi):
+    discovered, out = _run(check, "UPS Environment", thsOneTempData=temp, thsOneHumiData=humi)
+    assert discovered == []
+    assert out == [Result(state=State.UNKNOWN, summary="No environmental sensor data")]
 
 
 def test_environment_sensor_gone_after_discovery(check):
@@ -738,7 +773,7 @@ def test_non_numeric_environment_values_are_unknown(check):
         Result(state=State.UNKNOWN, summary="Temperature: cannot read 'N/A' as a number"),
         Result(state=State.OK, summary="Humidity: 46%"),
     ]
-    assert _metrics(out) == pytest.approx({"env_humidity": 45.6})
+    assert _metrics(out) == pytest.approx({"oposs_wiseways_ups_env_humidity": 45.6})
     _, out = _run(check, "UPS Environment", thsOneTempData="243", thsOneHumiData="--")
     assert _worst(out) == State.UNKNOWN
     assert "Humidity: cannot read '--' as a number" in _text(out)

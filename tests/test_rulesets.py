@@ -86,3 +86,12 @@ def test_the_check_reads_every_form_field(form):
     source = (PLUGIN / "agent_based/oposs_wiseways_ups.py").read_text()
     for key in form.elements:
         assert f'params.get("{key}"' in source, key
+
+
+def test_battery_voltage_upper_prefill_lets_the_battery_charge(form):
+    """16 blocks of 12 V float at about 217.9 V and boost-charge at up to
+    14.4 V per block (230.4 V); the prefilled upper levels must not warn on
+    either."""
+    warn, crit = form.elements["battery_voltage_upper"].parameter_form.prefill_fixed_levels.value
+    assert 230.4 < warn < crit
+    assert (warn, crit) == (235.0, 240.0)
