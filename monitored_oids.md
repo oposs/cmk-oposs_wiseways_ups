@@ -10,7 +10,8 @@ Shows static UPS system information and configuration. A maintenance
 expiration or next battery maintenance date in the past makes the service
 WARN ("Maintenance expired: ...", "Battery maintenance due: ...").
 The card reads 2032-01-01 for a date nobody entered; the service shows such
-a date as "not configured" and never warns on it. A rated power of 0 is left
+a date, and the epoch date 1970-01-01, as "not configured" and never warns on
+it. A rated power of 0 is left
 out of "Ratings".
 
 | OID | Description | Example Value | Unit |

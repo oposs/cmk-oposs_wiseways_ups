@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   installation: 2032-01-01" and "Battery next maintenance: 2032-01-01" on
   Wiseway cards where nobody entered these dates, and from 2032-01-02 on would
   have gone WARN with "Maintenance expired: 2032-01-01". The service now shows
-  such a date as "not configured" and does not warn on it.
+  such a date, and the epoch date 1970-01-01, as "not configured" and does not
+  warn on it.
 
 ## 0.6.1 - 2026-11-12
 ### Fixed

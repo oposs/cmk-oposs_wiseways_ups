@@ -1287,8 +1287,10 @@ check_plugin_oposs_wiseways_ups_alarm_status = CheckPlugin(
 )
 
 
-# The date a Wiseway card reads for every date nobody entered on it
-PLACEHOLDER_DATES = {"2032-01-01"}
+# Dates that mean nobody entered one: 2032-01-01 is what a Wiseway card reads
+# for every date left empty, 1970-01-01 is day 0 of a clock nobody set. Read
+# as a date, either makes "Maintenance expired" WARN.
+PLACEHOLDER_DATES = {"2032-01-01", "1970-01-01"}
 
 
 # Check plugin for UPS System Info (static/inventory)

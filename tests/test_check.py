@@ -687,6 +687,21 @@ def test_system_info_treats_the_2032_placeholder_as_not_configured(check, name, 
     assert "2032" not in _text(out)
 
 
+@pytest.mark.parametrize("name, label", [
+    ("ups1installationTime", "Installation"),
+    ("ups1maintenanceExpirationTime", "Maintenance expiration"),
+    ("ups1batteryInstallationReplacementTime", "Battery installation"),
+    ("ups1nextMaintenanceTimeOfBattery", "Battery next maintenance"),
+])
+def test_system_info_treats_the_epoch_date_as_not_configured(check, name, label):
+    """1970-01-01 is day 0 of a clock nobody set; read as a date it would
+    make "Maintenance expired" WARN forever."""
+    _, out = _run(check, "UPS System Info", **{name: "1970-01-01"})
+    assert _worst(out) == State.OK
+    assert Result(state=State.OK, notice=f"{label}: not configured") in out
+    assert "1970" not in _text(out)
+
+
 def test_system_info_without_identity(check):
     _, out = _run(check, "UPS System Info", ups1equipmentManufacturer="", systemSerialNumber="",
                   ups1ratedPower="", ups1ratedCapacityOfBattery="")
