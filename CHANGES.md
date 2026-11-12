@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+## 0.6.2 - 2026-11-12
+### Fixed
 - "UPS System Info" showed "Maintenance expiration: 2032-01-01", "Battery
   installation: 2032-01-01" and "Battery next maintenance: 2032-01-01" on
   Wiseway cards where nobody entered these dates, and from 2032-01-02 on would
