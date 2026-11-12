@@ -157,6 +157,26 @@ def test_real_identity_strings_lose_the_padding(check):
     assert "Versions: FW: VER 6.02, Agent: V3.06.01.250813A.Release" in summaries
 
 
+def test_real_placeholder_dates_are_not_configured(check):
+    """The card reads 2032-01-01 for the three maintenance dates nobody
+    entered; only the installation date is real."""
+    _, out = _real_run(check, "UPS System Info")
+    text = _text(out)
+    assert "2032" not in text
+    assert "Maintenance expiration: not configured" in text
+    assert "Battery installation: not configured" in text
+    assert "Battery next maintenance: not configured" in text
+    assert "Installation: 2025-12-04" in text
+
+
+def test_real_rated_power_of_0_is_left_out(check):
+    """ups1ratedPower reads 0 on a 1000 VA unit: the ratings show only the
+    battery capacity, and nothing else reads the rated power."""
+    _, out = _real_run(check, "UPS System Info")
+    assert "Ratings: 9Ah" in _summaries(out)
+    assert "0W" not in _text(out)
+
+
 def test_real_measurements(check):
     section = _real_parse(check)
     assert section["input_voltage"] == 233.5
