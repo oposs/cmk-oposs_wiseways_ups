@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+## 0.6.1 - 2026-11-12
+### Fixed
 - Since 0.6.0, "UPS Battery Voltage" was CRIT on Wiseway units with 3 × 12 V
   batteries, for example "Battery voltage: 41.2V (warn/crit below
   180.0V/170.0V)" on a healthy battery on float charge. The default lower
