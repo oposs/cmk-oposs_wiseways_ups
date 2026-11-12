@@ -299,7 +299,7 @@ def test_nothing_is_discovered_without_data(check):
 @pytest.mark.parametrize("service, changes", [
     ("UPS Battery Current", {"ups1batteryChargingAndDischargingCurrent": "1.5"}),
     ("UPS Output Current", {"ups1outputUPhaseCurrent": "4.2"}),
-    ("UPS Output Power", {"ups1outputUPhaseActivePower": "950"}),
+    ("UPS Output Power", {"ups1outputUPhaseActivePower": "0.95"}),
     ("UPS Environment", {"thsOneTempData": "243"}),
     ("UPS Environment", {"thsOneHumiData": "456"}),
 ])
@@ -417,11 +417,11 @@ LEVELS = [
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "265", State.CRIT),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "205", State.WARN),
     ("UPS Bypass Voltage", "ups1bypassUPhaseVoltage", "195", State.CRIT),
-    # 16 blocks of 12 V: 217.9 V on float charge, 180 V is 11.25 V per block
-    ("UPS Battery Voltage", "ups1batteryVoltage", "217.9", State.OK),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "180.0", State.OK),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "179.9", State.WARN),
-    ("UPS Battery Voltage", "ups1batteryVoltage", "169.9", State.CRIT),
+    # 3 blocks of 12 V: 40.7 to 41.2 V on float charge on all units of one site
+    ("UPS Battery Voltage", "ups1batteryVoltage", "41.2", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "32.0", State.OK),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "31.9", State.WARN),
+    ("UPS Battery Voltage", "ups1batteryVoltage", "29.9", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "41", State.WARN),
     ("UPS Battery Temperature", "ups1batteryTemperature", "46", State.CRIT),
     ("UPS Battery Temperature", "ups1batteryTemperature", "8", State.WARN),
@@ -458,7 +458,7 @@ def test_default_levels(check, service, name, value, state):
     ("UPS Output Current", {"output_current_upper": ("fixed", (10.0, 20.0))},
      "ups1outputUPhaseCurrent", "25", State.CRIT),
     ("UPS Output Power", {"power_upper": ("fixed", (4000.0, 4500.0))},
-     "ups1outputUPhaseActivePower", "4200", State.WARN),
+     "ups1outputUPhaseActivePower", "4.2", State.WARN),
     ("UPS Battery Voltage", {"battery_voltage_upper": ("fixed", (230.0, 235.0))},
      "ups1batteryVoltage", "236", State.CRIT),
     ("UPS Battery Voltage", {"battery_voltage_lower": ("fixed", (32.0, 30.0))},
@@ -478,9 +478,9 @@ def test_output_current_and_power_have_no_default_levels(check):
     _, out = _run(check, "UPS Output Current", ups1outputUPhaseCurrent="900")
     assert _worst(out) == State.OK
     assert _metrics(out) == {"oposs_wiseways_ups_output_current": 900.0}
-    _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99999")
+    _, out = _run(check, "UPS Output Power", ups1outputUPhaseActivePower="99.999")
     assert _worst(out) == State.OK
-    assert _metrics(out) == {"oposs_wiseways_ups_output_power": 99999.0}
+    assert _metrics(out) == {"oposs_wiseways_ups_output_power": pytest.approx(99999.0)}
 
 
 # --- battery ----------------------------------------------------------------
@@ -567,7 +567,6 @@ def test_power_status_base_output_status(check, raw, state):
 
 
 @pytest.mark.parametrize("changes, text", [
-    ({"upsInputLineBads": "3"}, "Input line failures: 3"),
     ({"ups1inputAbnormal": "1"}, "Input abnormal alarm"),
     ({"ups1outputAbnormal": "1"}, "Output abnormal alarm"),
     ({"ups1bypassStatus": "1"}, "Bypass active"),
@@ -581,6 +580,46 @@ def test_power_status_warnings(check, changes, text):
 def test_power_status_counts_line_failures(check):
     _, out = _run(check, "UPS Power Status", upsInputLineBads="3")
     assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 3}
+
+
+def _line_bads(check, *counts):
+    """UPS Power Status checked once per count, sharing one value store."""
+    return [_run(check, "UPS Power Status", upsInputLineBads=str(n))[1] for n in counts]
+
+
+def test_line_failures_first_check_is_ok(check, value_store):
+    """After a restart of the site or a new discovery there is nothing to
+    compare with: a count of past failures does not warn."""
+    (out,) = _line_bads(check, 6)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 6 in total" in _summaries(out)
+    assert value_store["input_line_bads"] == 6
+
+
+def test_line_failures_unchanged_is_ok(check):
+    _, out = _line_bads(check, 6, 6)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 6 in total" in _summaries(out)
+
+
+def test_line_failures_increase_warns(check):
+    _, out = _line_bads(check, 6, 8)
+    assert _worst(out) == State.WARN
+    assert "Input line failures: 2 new since last check (8 in total)" in _summaries(out)
+    assert _metrics(out) == {"oposs_wiseways_ups_input_line_bads": 8}
+
+
+def test_line_failures_warn_only_once(check):
+    _, _, out = _line_bads(check, 6, 7, 7)
+    assert _worst(out) == State.OK
+
+
+def test_line_failures_decrease_is_ok(check, value_store):
+    """The counter starts at 0 again when the card restarts."""
+    _, out = _line_bads(check, 6, 1)
+    assert _worst(out) == State.OK
+    assert "Input line failures: 1 in total" in _summaries(out)
+    assert value_store["input_line_bads"] == 1
 
 
 @pytest.mark.parametrize("flag, state, text", [
@@ -704,7 +743,9 @@ def test_environment_sensor_gone_after_discovery(check):
 def test_device_thresholds_are_the_default_levels(check):
     """README: 'Dynamic thresholds from device configuration when available'.
     Checkmk always passes the plugin's default parameters, so params.get()
-    never falls back to the device values."""
+    never falls back to the device values. On the real walk six of the seven
+    thresholds read 0 (not set); upsBatteryVoltLowConfig reads 33 V, which
+    is 1 V above the 32/30 V default."""
     _, out = _run(check, "UPS Input Voltage", ups1inputUPhaseVoltage="245",
                   inputVoltUpConfig="242", inputVoltLowConfig="187")
     assert _worst(out) == State.WARN
@@ -715,6 +756,7 @@ def test_device_thresholds_are_the_default_levels(check):
 @pytest.mark.parametrize("raw, name", [("9", "onBuck"), ("8", "standBy"), ("7", "rebooting"),
                                        ("6", "onBypass"), ("5", "sleeping"), ("4", "onBoost")])
 def test_base_output_status_follows_xppc_mib(check, raw, name):
+    """The real walk reads 2 (onLine), which both tables agree on."""
     _, out = _run(check, "UPS Power Status", upsBaseOutputStatus=raw)
     assert f"Base output status: {name}" in _text(out)
 

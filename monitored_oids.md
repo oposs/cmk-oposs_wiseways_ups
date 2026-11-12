@@ -74,8 +74,11 @@ upsOutputSource 4 (bypass) or 5 (battery) makes it WARN, any other value than
 3 (normal) makes it CRIT. upsBaseOutputStatus 2 (onLine) is OK, 1 (unknown)
 is ignored, 3, 4, 6, 9, 12, 13 and 15 make it WARN, and 5, 7, 8, 10, 11 and 14
 make it CRIT (names under "Base Output Status" below).
-upsInputLineBads above 0 makes it WARN, and so does any of the three flags at 1:
-ups1bypassStatus 1 shows as "Bypass active".
+upsInputLineBads counts the mains failures since the card started. The
+service shows the total and goes WARN when the count rose since the last
+check; the first check and a count that went down (card restart) stay OK.
+Any of the three flags at 1 makes it WARN: ups1bypassStatus 1 shows as
+"Bypass active".
 
 ### Alarm Status Service
 Monitors system alarms and critical conditions.
@@ -119,7 +122,7 @@ service WARN and 3 makes it CRIT.
 #### Battery Voltage Service
 | OID | Description | Example Value | Unit | Thresholds |
 |-----|-------------|---------------|------|------------|
-| .1.3.6.1.4.1.44782.1.4.4.1.19.0 | ups1batteryVoltage | 217.9 | V | WARN: 180V, CRIT: 170V |
+| .1.3.6.1.4.1.44782.1.4.4.1.19.0 | ups1batteryVoltage | 41.2 | V | WARN: 32V, CRIT: 30V |
 
 #### Battery Current Service
 | OID | Description | Example Value | Unit |
@@ -154,7 +157,7 @@ service WARN and 3 makes it CRIT.
 #### Output Power Service
 | OID | Description | Example Value | Unit |
 |-----|-------------|---------------|------|
-| .1.3.6.1.4.1.44782.1.4.4.1.48.0 | ups1outputUPhaseActivePower | 0.00 | W |
+| .1.3.6.1.4.1.44782.1.4.4.1.48.0 | ups1outputUPhaseActivePower | 0.00 | kW (the service shows W) |
 
 #### Output Load Service
 | OID | Description | Example Value | Unit | Thresholds |
@@ -183,7 +186,7 @@ They do not change the levels at present: the default levels of the
 | .1.3.6.1.4.1.44782.1.1.3.4.0 | outputVoltLowConfig | 215 | Output Voltage |
 | .1.3.6.1.4.1.44782.1.1.3.5.0 | upsTempUpConfig | 40 | Temperature |
 | .1.3.6.1.4.1.44782.1.1.3.6.0 | upsOutputLoadUpConfig | 0 | Output Load |
-| .1.3.6.1.4.1.44782.1.1.3.7.0 | upsBatteryVoltLowConfig | 180 | Battery Voltage |
+| .1.3.6.1.4.1.44782.1.1.3.7.0 | upsBatteryVoltLowConfig | 33 | Battery Voltage |
 
 ## Data Conversions
 

@@ -16,6 +16,7 @@ from cmk.agent_based.v2 import (
     State,
     check_levels,
     contains,
+    get_value_store,
     render,
 )
 
@@ -45,8 +46,8 @@ def minutes_to_seconds(value: str) -> float:
         return float('NaN')
 
 def identity_str(value: str) -> str:
-    """Return string as-is or default"""
-    return value or "Unknown"
+    """Return the string without the padding and line end the card sends, or a default"""
+    return value.strip() or "Unknown"
 
 def identity_float(value: str) -> float:
     """Convert to float directly, handling comma decimal separators"""
@@ -56,6 +57,13 @@ def identity_float(value: str) -> float:
         return float(value.replace(",", "."))
     except (ValueError, TypeError, AttributeError):
         return float('NaN')
+
+def kilowatts_to_watts(value: str) -> float:
+    """The card sends the active power in kW ('0.20' while upsOutputPower says 200 W)"""
+    if _is_no_value(value):
+        return NO_VALUE
+    return parse_enterprise_string(value) * 1000.0
+
 
 def parse_tenths(value: str) -> float:
     """Parse integer value representing tenths (e.g. 243 -> 24.3)"""
@@ -245,7 +253,7 @@ OID_DEFINITIONS: list[OIDDefinition] = [
     OIDDefinition("output_current", "4.1.44782.1.4.4.1.45.0", "ups1outputUPhaseCurrent",
                   "output_current", converter=parse_enterprise_string),
     OIDDefinition("output_power", "4.1.44782.1.4.4.1.48.0", "ups1outputUPhaseActivePower",
-                  "output_power_watts", converter=parse_enterprise_string),
+                  "output_power_watts", converter=kilowatts_to_watts),
     OIDDefinition("output_load", "4.1.44782.1.4.4.1.51.0", "ups1outputUPhaseLoadRate",
                   "output_load_percent", converter=parse_enterprise_string),
     
@@ -341,7 +349,7 @@ def parse_oposs_wiseways_ups(string_table):
                         # Set sensible defaults
                         if oid_def.converter == identity_str:
                             parsed[oid_def.output_key] = "Unknown"
-                        elif oid_def.converter in [identity_float, parse_enterprise_string, parse_tenths]:
+                        elif oid_def.converter in [identity_float, parse_enterprise_string, parse_tenths, kilowatts_to_watts]:
                             parsed[oid_def.output_key] = 0.0
                         elif oid_def.converter == identity_int:
                             parsed[oid_def.output_key] = 0
@@ -357,7 +365,7 @@ def parse_oposs_wiseways_ups(string_table):
                     parsed[oid_def.output_key] = "unknown"
                 elif oid_def.converter == identity_str:
                     parsed[oid_def.output_key] = "Unknown"
-                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds, parse_tenths]:
+                elif oid_def.converter in [identity_float, parse_enterprise_string, minutes_to_seconds, parse_tenths, kilowatts_to_watts]:
                     parsed[oid_def.output_key] = 0.0
                 elif oid_def.converter == identity_int:
                     parsed[oid_def.output_key] = 0
@@ -577,7 +585,7 @@ def check_oposs_wiseways_ups_battery_voltage(
     if device_lower > 0:
         default_levels_lower = ("fixed", (device_lower, device_lower - 2))
     else:
-        default_levels_lower = ("fixed", (180.0, 170.0))
+        default_levels_lower = ("fixed", (32.0, 30.0))
     
     yield from check_levels(
         voltage,
@@ -597,7 +605,7 @@ check_plugin_oposs_wiseways_ups_battery_voltage = CheckPlugin(
     check_function=check_oposs_wiseways_ups_battery_voltage,
     check_ruleset_name="oposs_wiseways_ups",
     check_default_parameters={
-        "battery_voltage_lower": ("fixed", (180.0, 170.0)),
+        "battery_voltage_lower": ("fixed", (32.0, 30.0)),
     },
 )
 
@@ -1169,10 +1177,23 @@ def check_oposs_wiseways_ups_power_status(
             state = State.CRIT
         yield Result(state=state, notice=f"Base output status: {base_status}")
     
-    # Input line failures
+    # Input line failures: upsInputLineBads counts every mains failure since
+    # the card started, so a count above 0 is history. A real unit on mains
+    # read 6 and stayed WARN for good. Warn only on a rise since the last
+    # check; the first check, or a counter that went down (card restart),
+    # has nothing to compare with.
     line_bads = section.get("input_line_bads", 0)
-    if line_bads > 0:
-        yield Result(state=State.WARN, summary=f"Input line failures: {line_bads}")
+    value_store = get_value_store()
+    last_line_bads = value_store.get("input_line_bads")
+    value_store["input_line_bads"] = line_bads
+    if last_line_bads is not None and line_bads > last_line_bads:
+        yield Result(
+            state=State.WARN,
+            summary=f"Input line failures: {line_bads - last_line_bads} new since last check"
+            f" ({line_bads} in total)",
+        )
+    else:
+        yield Result(state=State.OK, summary=f"Input line failures: {line_bads} in total")
     yield Metric("oposs_wiseways_ups_input_line_bads", line_bads)
     
     # Alarm flags

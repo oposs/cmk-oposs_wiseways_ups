@@ -45,11 +45,11 @@ and its "Temperature" levels to UPS Battery Temperature.
 |---------|-------|---------|----------------------------|------|------------|
 | **UPS System Info** | Model, serial, firmware, ratings, maintenance dates; WARN on expired maintenance or due battery maintenance | none | none | no | always |
 | **UPS Battery Status** | Battery status (CRIT on low or depleted, WARN on any other status than normal), time on battery (WARN), battery alarm flags (WARN, CRIT on low voltage) | `oposs_wiseways_ups_time_on_battery` | none | no | always |
-| **UPS Power Status** | Power source (WARN on bypass or battery, CRIT on any other source than normal), base output status, input line failures, input, output and bypass flags (WARN) | `oposs_wiseways_ups_input_line_bads` | none | no | always |
+| **UPS Power Status** | Power source (WARN on bypass or battery, CRIT on any other source than normal), base output status, input line failures (WARN when the count rose since the last check), input, output and bypass flags (WARN) | `oposs_wiseways_ups_input_line_bads` | none | no | always |
 | **UPS Alarm Status** | System alarm flags and system status | none | none | no | always |
 | **UPS Battery Charge** | Battery charge | `oposs_wiseways_ups_battery_charge` | lower 20/10 % | yes | always |
 | **UPS Battery Runtime** | Remaining runtime | `oposs_wiseways_ups_battery_runtime` | lower 10/5 min | yes | always |
-| **UPS Battery Voltage** | DC battery voltage | `oposs_wiseways_ups_battery_voltage` | lower 180/170 V | yes | value above 0 |
+| **UPS Battery Voltage** | DC battery voltage | `oposs_wiseways_ups_battery_voltage` | lower 32/30 V | yes | value above 0 |
 | **UPS Battery Current** | Charging or discharging current | `oposs_wiseways_ups_battery_current` | none | no | numeric value |
 | **UPS Battery Temperature** | Battery temperature | `oposs_wiseways_ups_battery_temperature` | upper 40/45 °C, lower 10/5 °C | yes | value above 0 |
 | **UPS Input Voltage** | AC input voltage | `oposs_wiseways_ups_input_voltage` | upper 250/260 V, lower 210/200 V | yes | value above 0 |

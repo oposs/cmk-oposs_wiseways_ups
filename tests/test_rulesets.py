@@ -88,10 +88,10 @@ def test_the_check_reads_every_form_field(form):
         assert f'params.get("{key}"' in source, key
 
 
-def test_battery_voltage_upper_prefill_lets_the_battery_charge(form):
-    """16 blocks of 12 V float at about 217.9 V and boost-charge at up to
-    14.4 V per block (230.4 V); the prefilled upper levels must not warn on
-    either."""
-    warn, crit = form.elements["battery_voltage_upper"].parameter_form.prefill_fixed_levels.value
-    assert 230.4 < warn < crit
-    assert (warn, crit) == (235.0, 240.0)
+def test_battery_voltage_prefills_are_those_of_0_5_0(form):
+    """0.6.0 moved them to a 218 V string; the Wiseway units in use carry
+    3 blocks of 12 V and float at 40.7 to 41.2 V."""
+    upper = form.elements["battery_voltage_upper"].parameter_form.prefill_fixed_levels.value
+    lower = form.elements["battery_voltage_lower"].parameter_form.prefill_fixed_levels.value
+    assert upper == (220.0, 230.0)
+    assert lower == (32.0, 30.0)
