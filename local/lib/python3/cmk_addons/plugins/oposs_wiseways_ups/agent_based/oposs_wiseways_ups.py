@@ -1287,6 +1287,10 @@ check_plugin_oposs_wiseways_ups_alarm_status = CheckPlugin(
 )
 
 
+# The date a Wiseway card reads for every date nobody entered on it
+PLACEHOLDER_DATES = {"2032-01-01"}
+
+
 # Check plugin for UPS System Info (static/inventory)
 def discover_oposs_wiseways_ups_system_info(section: dict[str, Any]) -> DiscoveryResult:
     if section:
@@ -1354,9 +1358,13 @@ def check_oposs_wiseways_ups_system_info(section: dict[str, Any]) -> CheckResult
     battery_install = section.get("battery_installation", "Unknown")
     battery_next_maint = section.get("battery_next_maintenance", "Unknown")
     
-    if installation != "Unknown":
+    if installation in PLACEHOLDER_DATES:
+        yield Result(state=State.OK, notice="Installation: not configured")
+    elif installation != "Unknown":
         yield Result(state=State.OK, notice=f"Installation: {installation}")
-    if maintenance_exp != "Unknown":
+    if maintenance_exp in PLACEHOLDER_DATES:
+        yield Result(state=State.OK, notice="Maintenance expiration: not configured")
+    elif maintenance_exp != "Unknown":
         # Check if maintenance has expired
         from datetime import datetime
         try:
@@ -1368,9 +1376,13 @@ def check_oposs_wiseways_ups_system_info(section: dict[str, Any]) -> CheckResult
         except ValueError:
             yield Result(state=State.OK, notice=f"Maintenance expiration: {maintenance_exp}")
     
-    if battery_install != "Unknown":
+    if battery_install in PLACEHOLDER_DATES:
+        yield Result(state=State.OK, notice="Battery installation: not configured")
+    elif battery_install != "Unknown":
         yield Result(state=State.OK, notice=f"Battery installation: {battery_install}")
-    if battery_next_maint != "Unknown":
+    if battery_next_maint in PLACEHOLDER_DATES:
+        yield Result(state=State.OK, notice="Battery next maintenance: not configured")
+    elif battery_next_maint != "Unknown":
         # Check if battery maintenance is due
         from datetime import datetime
         try:

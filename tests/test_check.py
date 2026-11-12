@@ -672,6 +672,21 @@ def test_system_info_keeps_unreadable_dates_as_notices(check):
     assert Result(state=State.OK, notice="Maintenance expiration: 13/06/2022") in out
 
 
+@pytest.mark.parametrize("name, label", [
+    ("ups1installationTime", "Installation"),
+    ("ups1maintenanceExpirationTime", "Maintenance expiration"),
+    ("ups1batteryInstallationReplacementTime", "Battery installation"),
+    ("ups1nextMaintenanceTimeOfBattery", "Battery next maintenance"),
+])
+def test_system_info_treats_the_2032_placeholder_as_not_configured(check, name, label):
+    """Wiseway cards read 2032-01-01 for every date nobody entered; from
+    2032-01-02 on that would read as expired maintenance."""
+    _, out = _run(check, "UPS System Info", **{name: "2032-01-01"})
+    assert _worst(out) == State.OK
+    assert Result(state=State.OK, notice=f"{label}: not configured") in out
+    assert "2032" not in _text(out)
+
+
 def test_system_info_without_identity(check):
     _, out = _run(check, "UPS System Info", ups1equipmentManufacturer="", systemSerialNumber="",
                   ups1ratedPower="", ups1ratedCapacityOfBattery="")
